@@ -117,7 +117,7 @@ function _Browser_makeAnimator(model, draw)
 	{
 		state = state === __4_EXTRA_REQUEST
 			? __4_NO_REQUEST
-			: ( _Browser_requestAnimationFrame(updateIfNeeded), draw(model), __4_EXTRA_REQUEST );
+			: ( state = __4_NO_REQUEST, draw(model), _Browser_requestAnimationFrame(updateIfNeeded), __4_EXTRA_REQUEST );
 	}
 
 	return function(nextModel, isSync)
