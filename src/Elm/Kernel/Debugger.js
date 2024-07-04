@@ -85,7 +85,7 @@ var _Debugger_element = F4(function(impl, flagDecoder, debugMetadata, args)
 				// view popout
 
 				__VirtualDom_doc = model.__$popout.__doc; // SWITCH TO POPOUT DOC
-				currPopout || (currPopout = __VirtualDom_virtualize(model.__$popout.__doc));
+				currPopout || (currPopout = __VirtualDom_virtualize(model.__$popout.__doc.body));
 				var nextPopout = __Main_popoutView(model);
 				__VirtualDom_diffHelp(currPopout, nextPopout, sendToApp);
 				currPopout = nextPopout;
@@ -145,7 +145,7 @@ var _Debugger_document = F4(function(impl, flagDecoder, debugMetadata, args)
 				if (!model.__$popout.__doc) { currPopout = undefined; return; }
 
 				__VirtualDom_doc = model.__$popout.__doc; // SWITCH TO POPOUT DOC
-				currPopout || (currPopout = __VirtualDom_virtualize(model.__$popout.__doc));
+				currPopout || (currPopout = __VirtualDom_virtualize(model.__$popout.__doc.body));
 				var nextPopout = __Main_popoutView(model);
 				__VirtualDom_diffHelp(currPopout, nextPopout, sendToApp);
 				currPopout = nextPopout;
