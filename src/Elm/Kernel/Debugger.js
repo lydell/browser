@@ -10,7 +10,7 @@ import Elm.Kernel.List exposing (Cons, Nil)
 import Elm.Kernel.Platform exposing (initialize)
 import Elm.Kernel.Scheduler exposing (binding, succeed)
 import Elm.Kernel.Utils exposing (Tuple0, Tuple2, ap)
-import Elm.Kernel.VirtualDom exposing (node, applyPatches, diff, doc, makeStepper, map, render, virtualize, divertHrefToApp)
+import Elm.Kernel.VirtualDom exposing (node, diffHelp, doc, makeStepper, map, render, virtualize, divertHrefToApp, even)
 import Json.Decode as Json exposing (map)
 import List exposing (map, reverse)
 import Maybe exposing (Just, Nothing)
@@ -46,7 +46,6 @@ var _Debugger_element = F4(function(impl, flagDecoder, debugMetadata, args)
 		function(sendToApp, initialModel)
 		{
 			var view = impl.__$view;
-			var title = __VirtualDom_doc.title;
 			var domNode = args && args['node'] ? args['node'] : __Debug_crash(0);
 			var currNode = __VirtualDom_virtualize(domNode);
 			var currBlocker = __Main_toBlockerType(initialModel);
@@ -60,9 +59,9 @@ var _Debugger_element = F4(function(impl, flagDecoder, debugMetadata, args)
 
 			return _Browser_makeAnimator(initialModel, function(model)
 			{
+				__VirtualDom_even = !__VirtualDom_even;
 				var nextNode = A2(__VirtualDom_map, __Main_UserMsg, view(__Main_getUserModel(model)));
-				var patches = __VirtualDom_diff(currNode, nextNode);
-				domNode = __VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);
+				__VirtualDom_diffHelp(currNode, nextNode, sendToApp);
 				currNode = nextNode;
 
 				// update blocker
@@ -74,8 +73,7 @@ var _Debugger_element = F4(function(impl, flagDecoder, debugMetadata, args)
 				// view corner
 
 				var cornerNext = __Main_cornerView(model);
-				var cornerPatches = __VirtualDom_diff(cornerCurr, cornerNext);
-				cornerNode = __VirtualDom_applyPatches(cornerNode, cornerCurr, cornerPatches, sendToApp);
+				__VirtualDom_diffHelp(cornerCurr, cornerNext, sendToApp);
 				cornerCurr = cornerNext;
 
 				if (!model.__$popout.__doc)
@@ -89,8 +87,7 @@ var _Debugger_element = F4(function(impl, flagDecoder, debugMetadata, args)
 				__VirtualDom_doc = model.__$popout.__doc; // SWITCH TO POPOUT DOC
 				currPopout || (currPopout = __VirtualDom_virtualize(model.__$popout.__doc));
 				var nextPopout = __Main_popoutView(model);
-				var popoutPatches = __VirtualDom_diff(currPopout, nextPopout);
-				__VirtualDom_applyPatches(model.__$popout.__doc.body, currPopout, popoutPatches, sendToApp);
+				__VirtualDom_diffHelp(currPopout, nextPopout, sendToApp);
 				currPopout = nextPopout;
 				__VirtualDom_doc = document; // SWITCH BACK TO NORMAL DOC
 			});
@@ -113,7 +110,9 @@ var _Debugger_document = F4(function(impl, flagDecoder, debugMetadata, args)
 			var view = impl.__$view;
 			var title = __VirtualDom_doc.title;
 			var bodyNode = __VirtualDom_doc.body;
+			__VirtualDom_divertHrefToApp = divertHrefToApp;
 			var currNode = __VirtualDom_virtualize(bodyNode);
+			__VirtualDom_divertHrefToApp = 0;
 			var currBlocker = __Main_toBlockerType(initialModel);
 			var currPopout;
 
@@ -121,6 +120,7 @@ var _Debugger_document = F4(function(impl, flagDecoder, debugMetadata, args)
 
 			return _Browser_makeAnimator(initialModel, function(model)
 			{
+				__VirtualDom_even = !__VirtualDom_even;
 				__VirtualDom_divertHrefToApp = divertHrefToApp;
 				var doc = view(__Main_getUserModel(model));
 				var nextNode = __VirtualDom_node('body')(__List_Nil)(
@@ -129,8 +129,7 @@ var _Debugger_document = F4(function(impl, flagDecoder, debugMetadata, args)
 						__List_Cons(__Main_cornerView(model), __List_Nil)
 					)
 				);
-				var patches = __VirtualDom_diff(currNode, nextNode);
-				bodyNode = __VirtualDom_applyPatches(bodyNode, currNode, patches, sendToApp);
+				__VirtualDom_diffHelp(currNode, nextNode, sendToApp);
 				currNode = nextNode;
 				__VirtualDom_divertHrefToApp = 0;
 				(title !== doc.__$title) && (__VirtualDom_doc.title = title = doc.__$title);
@@ -148,8 +147,7 @@ var _Debugger_document = F4(function(impl, flagDecoder, debugMetadata, args)
 				__VirtualDom_doc = model.__$popout.__doc; // SWITCH TO POPOUT DOC
 				currPopout || (currPopout = __VirtualDom_virtualize(model.__$popout.__doc));
 				var nextPopout = __Main_popoutView(model);
-				var popoutPatches = __VirtualDom_diff(currPopout, nextPopout);
-				__VirtualDom_applyPatches(model.__$popout.__doc.body, currPopout, popoutPatches, sendToApp);
+				__VirtualDom_diffHelp(currPopout, nextPopout, sendToApp);
 				currPopout = nextPopout;
 				__VirtualDom_doc = document; // SWITCH BACK TO NORMAL DOC
 			});
