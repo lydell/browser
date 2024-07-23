@@ -10,7 +10,7 @@ import Elm.Kernel.List exposing (Cons, Nil)
 import Elm.Kernel.Platform exposing (initialize)
 import Elm.Kernel.Scheduler exposing (binding, succeed)
 import Elm.Kernel.Utils exposing (Tuple0, Tuple2, ap)
-import Elm.Kernel.VirtualDom exposing (node, diffHelp, doc, makeStepper, map, render, virtualize, divertHrefToApp, even)
+import Elm.Kernel.VirtualDom exposing (node, diffHelp, doc, makeStepper, map, render, virtualize, divertHrefToApp, renderCount)
 import Json.Decode as Json exposing (map)
 import List exposing (map, reverse)
 import Maybe exposing (Just, Nothing)
@@ -59,7 +59,7 @@ var _Debugger_element = F4(function(impl, flagDecoder, debugMetadata, args)
 
 			return _Browser_makeAnimator(initialModel, function(model)
 			{
-				__VirtualDom_even = !__VirtualDom_even;
+				__VirtualDom_renderCount++;
 				var nextNode = A2(__VirtualDom_map, __Main_UserMsg, view(__Main_getUserModel(model)));
 				__VirtualDom_diffHelp(currNode, nextNode, sendToApp);
 				currNode = nextNode;
@@ -120,7 +120,7 @@ var _Debugger_document = F4(function(impl, flagDecoder, debugMetadata, args)
 
 			return _Browser_makeAnimator(initialModel, function(model)
 			{
-				__VirtualDom_even = !__VirtualDom_even;
+				__VirtualDom_renderCount++;
 				__VirtualDom_divertHrefToApp = divertHrefToApp;
 				var doc = view(__Main_getUserModel(model));
 				var nextNode = __VirtualDom_node('body')(__List_Nil)(
