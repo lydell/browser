@@ -10,7 +10,7 @@ import Elm.Kernel.List exposing (Nil)
 import Elm.Kernel.Platform exposing (initialize)
 import Elm.Kernel.Scheduler exposing (binding, fail, rawSpawn, succeed, spawn)
 import Elm.Kernel.Utils exposing (Tuple0, Tuple2)
-import Elm.Kernel.VirtualDom exposing (appendChild, diffHelp, doc, node, passiveSupported, render, divertHrefToApp, renderCount)
+import Elm.Kernel.VirtualDom exposing (appendChild, diff, doc, node, passiveSupported, render, divertHrefToApp, renderCount)
 import Json.Decode as Json exposing (map)
 import Maybe exposing (Just, Nothing)
 import Result exposing (isOk)
@@ -48,7 +48,7 @@ var _Browser_element = __Debugger_element || F4(function(impl, flagDecoder, debu
 			{
 				__VirtualDom_renderCount++;
 				var nextNode = view(model);
-				__VirtualDom_diffHelp(currNode, nextNode, sendToApp);
+				__VirtualDom_diff(currNode, nextNode, sendToApp);
 				currNode = nextNode;
 			});
 		}
@@ -83,7 +83,7 @@ var _Browser_document = __Debugger_document || F4(function(impl, flagDecoder, de
 				__VirtualDom_divertHrefToApp = divertHrefToApp;
 				var doc = view(model);
 				var nextNode = __VirtualDom_node('body')(__List_Nil)(doc.__$body);
-				__VirtualDom_diffHelp(currNode, nextNode, sendToApp);
+				__VirtualDom_diff(currNode, nextNode, sendToApp);
 				currNode = nextNode;
 				__VirtualDom_divertHrefToApp = 0;
 				(title !== doc.__$title) && (__VirtualDom_doc.title = title = doc.__$title);
