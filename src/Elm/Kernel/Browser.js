@@ -10,7 +10,7 @@ import Elm.Kernel.List exposing (Nil)
 import Elm.Kernel.Platform exposing (initialize)
 import Elm.Kernel.Scheduler exposing (binding, fail, rawSpawn, succeed, spawn)
 import Elm.Kernel.Utils exposing (Tuple0, Tuple2)
-import Elm.Kernel.VirtualDom exposing (appendChild, diff, doc, node, passiveSupported, render, divertHrefToApp, renderCount)
+import Elm.Kernel.VirtualDom exposing (appendChild, applyPatches, diff, doc, node, passiveSupported, render, divertHrefToApp)
 import Json.Decode as Json exposing (map)
 import Maybe exposing (Just, Nothing)
 import Result exposing (isOk)
@@ -46,9 +46,9 @@ var _Browser_element = __Debugger_element || F4(function(impl, flagDecoder, debu
 
 			return _Browser_makeAnimator(initialModel, function(model)
 			{
-				__VirtualDom_renderCount++;
 				var nextNode = view(model);
-				__VirtualDom_diff(currNode, nextNode, sendToApp);
+				var patches = __VirtualDom_diff(currNode, nextNode);
+				domNode = __VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);
 				currNode = nextNode;
 			});
 		}
@@ -74,16 +74,17 @@ var _Browser_document = __Debugger_document || F4(function(impl, flagDecoder, de
 			var divertHrefToApp = impl.__$setup && impl.__$setup(sendToApp)
 			var view = impl.__$view;
 			var title = __VirtualDom_doc.title;
+			var bodyNode = __VirtualDom_doc.body;
 			__VirtualDom_divertHrefToApp = divertHrefToApp;
-			var currNode = _VirtualDom_virtualize(__VirtualDom_doc.body);
+			var currNode = _VirtualDom_virtualize(bodyNode);
 			__VirtualDom_divertHrefToApp = 0;
 			return _Browser_makeAnimator(initialModel, function(model)
 			{
-				__VirtualDom_renderCount++;
 				__VirtualDom_divertHrefToApp = divertHrefToApp;
 				var doc = view(model);
 				var nextNode = __VirtualDom_node('body')(__List_Nil)(doc.__$body);
-				__VirtualDom_diff(currNode, nextNode, sendToApp);
+				var patches = __VirtualDom_diff(currNode, nextNode);
+				bodyNode = __VirtualDom_applyPatches(bodyNode, currNode, patches, sendToApp);
 				currNode = nextNode;
 				__VirtualDom_divertHrefToApp = 0;
 				(title !== doc.__$title) && (__VirtualDom_doc.title = title = doc.__$title);
