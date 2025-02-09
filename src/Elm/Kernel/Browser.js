@@ -146,14 +146,25 @@ function _Browser_makeAnimator(model, draw)
 {
 	draw(model);
 
+	// Whether we have already requested an animation frame for drawing.
 	var pending = false;
+
+	// Whether `draw` is currently running. `draw` can cause side effects:
+	// If the user renders a custom element, they can dispatch an event in
+	// its `connectedCallback`, which happens synchronously. That causes
+	// `update` to run while we’re in the middle of drawing, which then
+	// causes another call to the returned function below. We can’t start
+	// another draw while before the first one is finished.
+	var drawing = false;
 
 	function updateIfNeeded()
 	{
 		if (pending)
 		{
-			draw(model);
 			pending = false;
+			drawing = true;
+			draw(model);
+			drawing = false;
 		}
 	}
 
@@ -161,15 +172,21 @@ function _Browser_makeAnimator(model, draw)
 	{
 		model = nextModel;
 
-		if (isSync || _Browser_inAnimationFrame)
+		// When using `Browser.Events.onAnimationFrame` we already are
+		// in an animation frame, so draw straight away. Otherwise we’ll
+		// be drawing one frame late all the time.
+		// If we’re already drawing, wait until the next frame instead.
+		if ((isSync || _Browser_inAnimationFrame) && !drawing)
 		{
-			draw(model);
 			pending = false;
+			drawing = true;
+			draw(model);
+			drawing = false;
 		}
 		else if (!pending)
 		{
-			_Browser_requestAnimationFrame(updateIfNeeded);
 			pending = true;
+			_Browser_requestAnimationFrame(updateIfNeeded);
 		}
 	};
 }
