@@ -42,8 +42,7 @@ var _Browser_element = __Debugger_element || F4(function(impl, flagDecoder, debu
 			/**__DEBUG/
 			var domNode = args && args['node'] ? args['node'] : __Debug_crash(0);
 			//*/
-			var skipVirtualizeChildren = Boolean(args && 'virtualize' in args && !args['virtualize']);
-			var currNode = _VirtualDom_virtualize(domNode, skipVirtualizeChildren);
+			var currNode = _VirtualDom_virtualize(domNode);
 
 			return _Browser_makeAnimator(initialModel, function(model)
 			{
@@ -76,9 +75,8 @@ var _Browser_document = __Debugger_document || F4(function(impl, flagDecoder, de
 			var view = impl.__$view;
 			var title = __VirtualDom_doc.title;
 			var bodyNode = __VirtualDom_doc.body;
-			var skipVirtualizeChildren = Boolean(args && 'virtualize' in args && !args['virtualize']);
 			__VirtualDom_divertHrefToApp = divertHrefToApp;
-			var currNode = _VirtualDom_virtualize(bodyNode, skipVirtualizeChildren);
+			var currNode = _VirtualDom_virtualize(bodyNode);
 			__VirtualDom_divertHrefToApp = 0;
 			return _Browser_makeAnimator(initialModel, function(model)
 			{
