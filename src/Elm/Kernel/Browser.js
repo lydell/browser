@@ -141,32 +141,61 @@ var _Browser_requestAnimationFrame_raw =
 		? requestAnimationFrame
 		: function(callback) { return setTimeout(callback, 1000 / 60); };
 
+// Whether `draw` is currently running. `draw` can cause side effects:
+// If the user renders a custom element, they can dispatch an event in
+// its `connectedCallback`, which happens synchronously. That causes
+// `update` to run while we’re in the middle of drawing, which then
+// causes another call to the returned function below. We can’t start
+// another draw while before the first one is finished.
+// Another thing you can do in `connectedCallback`, is to initialize
+// another Elm app. Even different app instances can conflict with each other,
+// since they all use the same `_VirtualDom_renderCount` variable.
+var _Browser_drawing = false;
+var _Browser_drawSync_queue = [];
 
 function _Browser_makeAnimator(model, draw)
 {
-	draw(model);
-
 	// Whether we have already requested an animation frame for drawing.
-	var pending = false;
+	var pendingFrame = false;
 
-	// Whether `draw` is currently running. `draw` can cause side effects:
-	// If the user renders a custom element, they can dispatch an event in
-	// its `connectedCallback`, which happens synchronously. That causes
-	// `update` to run while we’re in the middle of drawing, which then
-	// causes another call to the returned function below. We can’t start
-	// another draw while before the first one is finished.
-	var drawing = false;
+	// Whether we have already requested to draw right after the current draw has finished.
+	var pendingSync = false;
+
+	function drawHelp()
+	{
+		// If we’re already drawing, wait until that draw is done.
+		if (_Browser_drawing)
+		{
+			if (!pendingSync)
+			{
+				pendingSync = true;
+				_Browser_drawSync_queue.push(drawHelp);
+			}
+			return;
+		}
+
+		pendingFrame = false;
+		pendingSync = false;
+		_Browser_drawing = true;
+		draw(model);
+		_Browser_drawing = false;
+
+		while (_Browser_drawSync_queue.length > 0)
+		{
+			var callback = _Browser_drawSync_queue.shift();
+			callback();
+		}
+	}
 
 	function updateIfNeeded()
 	{
-		if (pending)
+		if (pendingFrame)
 		{
-			pending = false;
-			drawing = true;
-			draw(model);
-			drawing = false;
+			drawHelp();
 		}
 	}
+
+	drawHelp();
 
 	return function(nextModel, isSync)
 	{
@@ -175,17 +204,13 @@ function _Browser_makeAnimator(model, draw)
 		// When using `Browser.Events.onAnimationFrame` we already are
 		// in an animation frame, so draw straight away. Otherwise we’ll
 		// be drawing one frame late all the time.
-		// If we’re already drawing, wait until the next frame instead.
-		if ((isSync || _Browser_inAnimationFrame) && !drawing)
+		if (isSync || _Browser_inAnimationFrame)
 		{
-			pending = false;
-			drawing = true;
-			draw(model);
-			drawing = false;
+			drawHelp();
 		}
-		else if (!pending)
+		else if (!pendingFrame)
 		{
-			pending = true;
+			pendingFrame = true;
 			_Browser_requestAnimationFrame(updateIfNeeded);
 		}
 	};
