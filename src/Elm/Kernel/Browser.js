@@ -144,7 +144,7 @@ var _Browser_requestAnimationFrame_raw =
 // its `connectedCallback`, which happens synchronously. That causes
 // `update` to run while we’re in the middle of drawing, which then
 // causes another call to the returned function below. We can’t start
-// another draw while before the first one is finished.
+// another draw before the first one is finished.
 // Another thing you can do in `connectedCallback`, is to initialize
 // another Elm app. Even different app instances can conflict with each other,
 // since they all use the same `_VirtualDom_renderCount` variable.
