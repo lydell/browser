@@ -150,7 +150,6 @@ function _Browser_makeAnimator(model, draw)
 	// causes another call to the returned function below. We can’t start
 	// another draw while before the first one is finished.
 	var drawing = false;
-	var drawSyncQueue = [];
 
 	// Whether we have already requested an animation frame for drawing.
 	var pendingFrame = false;
@@ -163,11 +162,7 @@ function _Browser_makeAnimator(model, draw)
 		// If we’re already drawing, wait until that draw is done.
 		if (drawing)
 		{
-			if (!pendingSync)
-			{
-				pendingSync = true;
-				drawSyncQueue.push(drawHelp);
-			}
+			pendingSync = true;
 			return;
 		}
 
@@ -177,10 +172,9 @@ function _Browser_makeAnimator(model, draw)
 		draw(model);
 		drawing = false;
 
-		while (drawSyncQueue.length > 0)
+		if (pendingSync)
 		{
-			var callback = drawSyncQueue.shift();
-			callback();
+			drawHelp();
 		}
 	}
 
