@@ -98,12 +98,6 @@ type Msg
   | ViewMore Path
 
 
-type Redirect
-  = None
-  | Key
-  | Value
-
-
 update : Msg -> Expando -> Expando
 update msg expando =
   case msg of
