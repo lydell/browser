@@ -7,8 +7,8 @@ import Elm.Kernel.Debug exposing (crash)
 import Elm.Kernel.Debugger exposing (element, document)
 import Elm.Kernel.Json exposing (runHelp)
 import Elm.Kernel.List exposing (Nil)
-import Elm.Kernel.Platform exposing (initialize)
-import Elm.Kernel.Scheduler exposing (binding, fail, rawSpawn, succeed, spawn)
+import Elm.Kernel.Platform exposing (effectManagers, initialize)
+import Elm.Kernel.Scheduler exposing (binding, enqueue, fail, rawSpawn, succeed, spawn)
 import Elm.Kernel.Utils exposing (Tuple0, Tuple2)
 import Elm.Kernel.VirtualDom exposing (appendChild, applyPatches, diff, doc, node, passiveSupported, render, divertHrefToApp)
 import Json.Decode as Json exposing (map)
@@ -26,33 +26,49 @@ import Url exposing (fromString)
 
 var __Debugger_element;
 
-var _Browser_element = __Debugger_element || F4(function(impl, flagDecoder, debugMetadata, args)
+var _Browser_element = __Debugger_element || F3(function(impl, flagDecoder, debugMetadata)
 {
-	return __Platform_initialize(
-		flagDecoder,
-		args,
-		impl.__$init,
-		impl.__$update,
-		impl.__$subscriptions,
-		function(sendToApp, initialModel) {
-			var view = impl.__$view;
-			/**__PROD/
-			var domNode = args['node'];
-			//*/
-			/**__DEBUG/
-			var domNode = args && args['node'] ? args['node'] : __Debug_crash(0);
-			//*/
-			var currNode = _VirtualDom_virtualize(domNode);
+	var init = function(args)
+	{
+		return __Platform_initialize(
+			flagDecoder,
+			args,
+			// These three arguments are used by old versions of __Platform_initialize.
+			// Newer versions ignore them.
+			impl.__$init,
+			impl.__$update,
+			impl.__$subscriptions,
+			function(sendToApp, initialModel) {
+				/**__PROD/
+				var domNode = args['node'];
+				//*/
+				/**__DEBUG/
+				var domNode = args && args['node'] ? args['node'] : __Debug_crash(0);
+				//*/
+				var currNode = _VirtualDom_virtualize(domNode);
 
-			return _Browser_makeAnimator(initialModel, function(model)
-			{
-				var nextNode = view(model);
-				var patches = __VirtualDom_diff(currNode, nextNode);
-				domNode = __VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);
-				currNode = nextNode;
-			});
-		}
-	);
+				return _Browser_makeAnimator(initialModel, function(model)
+				{
+					var nextNode = impl.__$view(model);
+					var patches = __VirtualDom_diff(currNode, nextNode);
+					domNode = __VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);
+					currNode = nextNode;
+				});
+			},
+			// Only used by newer versions of __Platform_initialize.
+			impl
+		);
+	};
+
+	/**__DEBUG/
+	init.hotReloadData = {
+		__$impl: impl,
+		__$platform_effectManagers: __Platform_effectManagers,
+		__$scheduler_enqueue: __Scheduler_enqueue
+	};
+	//*/
+
+	return init;
 });
 
 
@@ -62,35 +78,51 @@ var _Browser_element = __Debugger_element || F4(function(impl, flagDecoder, debu
 
 var __Debugger_document;
 
-var _Browser_document = __Debugger_document || F4(function(impl, flagDecoder, debugMetadata, args)
+var _Browser_document = __Debugger_document || F3(function(impl, flagDecoder, debugMetadata)
 {
-	return __Platform_initialize(
-		flagDecoder,
-		args,
-		impl.__$init,
-		impl.__$update,
-		impl.__$subscriptions,
-		function(sendToApp, initialModel) {
-			var divertHrefToApp = impl.__$setup && impl.__$setup(sendToApp)
-			var view = impl.__$view;
-			var title = __VirtualDom_doc.title;
-			var bodyNode = __VirtualDom_doc.body;
-			__VirtualDom_divertHrefToApp = divertHrefToApp;
-			var currNode = _VirtualDom_virtualize(bodyNode);
-			__VirtualDom_divertHrefToApp = 0;
-			return _Browser_makeAnimator(initialModel, function(model)
-			{
+	var init = function(args)
+	{
+		return __Platform_initialize(
+			flagDecoder,
+			args,
+			// These three arguments are used by old versions of __Platform_initialize.
+			// Newer versions ignore them.
+			impl.__$init,
+			impl.__$update,
+			impl.__$subscriptions,
+			function(sendToApp, initialModel) {
+				var divertHrefToApp = impl.__$setup && impl.__$setup(sendToApp)
+				var title = __VirtualDom_doc.title;
+				var bodyNode = __VirtualDom_doc.body;
 				__VirtualDom_divertHrefToApp = divertHrefToApp;
-				var doc = view(model);
-				var nextNode = __VirtualDom_node('body')(__List_Nil)(doc.__$body);
-				var patches = __VirtualDom_diff(currNode, nextNode);
-				bodyNode = __VirtualDom_applyPatches(bodyNode, currNode, patches, sendToApp);
-				currNode = nextNode;
+				var currNode = _VirtualDom_virtualize(bodyNode);
 				__VirtualDom_divertHrefToApp = 0;
-				(title !== doc.__$title) && (__VirtualDom_doc.title = title = doc.__$title);
-			});
-		}
-	);
+				return _Browser_makeAnimator(initialModel, function(model)
+				{
+					__VirtualDom_divertHrefToApp = divertHrefToApp;
+					var doc = impl.__$view(model);
+					var nextNode = __VirtualDom_node('body')(__List_Nil)(doc.__$body);
+					var patches = __VirtualDom_diff(currNode, nextNode);
+					bodyNode = __VirtualDom_applyPatches(bodyNode, currNode, patches, sendToApp);
+					currNode = nextNode;
+					__VirtualDom_divertHrefToApp = 0;
+					(title !== doc.__$title) && (__VirtualDom_doc.title = title = doc.__$title);
+				});
+			},
+			// Only used by newer versions of __Platform_initialize.
+			impl
+		);
+	}
+
+	/**__DEBUG/
+	init.hotReloadData = {
+		__$impl: impl,
+		__$platform_effectManagers: __Platform_effectManagers,
+		__$scheduler_enqueue: __Scheduler_enqueue
+	};
+	//*/
+
+	return init;
 });
 
 
@@ -214,9 +246,7 @@ function _Browser_makeAnimator(model, draw)
 
 function _Browser_application(impl)
 {
-	var onUrlChange = impl.__$onUrlChange;
-	var onUrlRequest = impl.__$onUrlRequest;
-	var key = function() { key.__sendToApp(onUrlChange(_Browser_getUrl())); };
+	var key = function() { key.__sendToApp(impl.__$onUrlChange(_Browser_getUrl())); };
 
 	return _Browser_document({
 		__$setup: function(sendToApp)
@@ -233,7 +263,7 @@ function _Browser_application(impl)
 					var href = domNode.href;
 					var curr = _Browser_getUrl();
 					var next = __Url_fromString(href).a;
-					sendToApp(onUrlRequest(
+					sendToApp(impl.__$onUrlRequest(
 						(next
 							&& curr.__$protocol === next.__$protocol
 							&& curr.__$host === next.__$host
@@ -249,9 +279,18 @@ function _Browser_application(impl)
 		{
 			return A3(impl.__$init, flags, _Browser_getUrl(), key);
 		},
+		// Unnecessary-looking wrapper functions are needed during development
+		// for hot reloading. In production, we optimize slightly by omitting them.
+		/**__PROD/
 		__$view: impl.__$view,
 		__$update: impl.__$update,
 		__$subscriptions: impl.__$subscriptions
+		//*/
+		/**__DEBUG/
+		__$view: function(model) { return impl.__$view(model); },
+		__$update: F2(function(msg, model) { return A2(impl.__$update, msg, model); }),
+		__$subscriptions: function(model) { return impl.__$subscriptions(model); }
+		//*/
 	});
 }
 
