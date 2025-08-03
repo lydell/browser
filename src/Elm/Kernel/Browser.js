@@ -38,7 +38,7 @@ var _Browser_element = __Debugger_element || F3(function(impl, flagDecoder, debu
 			impl.__$init,
 			impl.__$update,
 			impl.__$subscriptions,
-			function(sendToApp, initialModel) {
+			function(sendToApp, initialModel, platformInitializeWillDoInitialDraw) {
 				/**__PROD/
 				var domNode = args['node'];
 				//*/
@@ -47,7 +47,7 @@ var _Browser_element = __Debugger_element || F3(function(impl, flagDecoder, debu
 				//*/
 				var currNode = _VirtualDom_virtualize(domNode);
 
-				var stepper = _Browser_makeAnimator(initialModel, function(model)
+				var stepper = _Browser_makeAnimator(function(model)
 				{
 					var nextNode = impl.__$view(model);
 					var patches = __VirtualDom_diff(currNode, nextNode);
@@ -65,6 +65,15 @@ var _Browser_element = __Debugger_element || F3(function(impl, flagDecoder, debu
 
 					return domNode;
 				};
+
+				// The initial draw used to be a side effect of `stepperBuilder`.
+				// Newer versions of `__Platform_initialize` do that instead.
+				// Older versions don’t send the `platformInitializeWillDoInitialDraw`
+				// parameter, which means that we need to do it here for compatibility.
+				if (!platformInitializeWillDoInitialDraw)
+				{
+					stepper(initialModel, true);
+				}
 
 				return stepper;
 			},
@@ -103,7 +112,7 @@ var _Browser_document = __Debugger_document || F3(function(impl, flagDecoder, de
 			impl.__$init,
 			impl.__$update,
 			impl.__$subscriptions,
-			function(sendToApp, initialModel) {
+			function(sendToApp, initialModel, platformInitializeWillDoInitialDraw) {
 				var divertHrefToApp = impl.__$setup && impl.__$setup(sendToApp)
 				var title = __VirtualDom_doc.title;
 				var bodyNode = __VirtualDom_doc.body;
@@ -111,7 +120,7 @@ var _Browser_document = __Debugger_document || F3(function(impl, flagDecoder, de
 				var currNode = _VirtualDom_virtualize(bodyNode);
 				__VirtualDom_divertHrefToApp = 0;
 
-				var stepper = _Browser_makeAnimator(initialModel, function(model)
+				var stepper = _Browser_makeAnimator(function(model)
 				{
 					__VirtualDom_divertHrefToApp = divertHrefToApp;
 					var doc = impl.__$view(model);
@@ -138,6 +147,15 @@ var _Browser_document = __Debugger_document || F3(function(impl, flagDecoder, de
 
 					return bodyNode;
 				};
+
+				// The initial draw used to be a side effect of `stepperBuilder`.
+				// Newer versions of `__Platform_initialize` do that instead.
+				// Older versions don’t send the `platformInitializeWillDoInitialDraw`
+				// parameter, which means that we need to do it here for compatibility.
+				if (!platformInitializeWillDoInitialDraw)
+				{
+					stepper(initialModel, true);
+				}
 
 				return stepper;
 			},
@@ -205,8 +223,10 @@ var _Browser_requestAnimationFrame_raw =
 		? requestAnimationFrame
 		: function(callback) { return setTimeout(callback, 1000 / 60); };
 
-function _Browser_makeAnimator(model, draw)
+function _Browser_makeAnimator(draw)
 {
+	var model;
+
 	// Whether `draw` is currently running. `draw` can cause side effects:
 	// If the user renders a custom element, they can dispatch an event in
 	// its `connectedCallback`, which happens synchronously. That causes
@@ -249,8 +269,6 @@ function _Browser_makeAnimator(model, draw)
 			drawHelp();
 		}
 	}
-
-	drawHelp();
 
 	return function(nextModel, isSync)
 	{

@@ -54,7 +54,7 @@ var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 			wrappedImpl.__$init,
 			wrappedImpl.__$update,
 			wrappedImpl.__$subscriptions,
-			function(sendToApp, initialModel)
+			function(sendToApp, initialModel, platformInitializeWillDoInitialDraw)
 			{
 				var domNode = args && args['node'] ? args['node'] : __Debug_crash(0);
 				var currNode = __VirtualDom_virtualize(domNode);
@@ -67,7 +67,7 @@ var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 
 				initialModel.__$popout.__sendToApp = sendToApp;
 
-				var stepper = _Browser_makeAnimator(initialModel, function(model)
+				var stepper = _Browser_makeAnimator(function(model)
 				{
 					var nextNode = A2(__VirtualDom_map, __Main_UserMsg, wrappedImpl.__$view(__Main_getUserModel(model)));
 					var patches = __VirtualDom_diff(currNode, nextNode);
@@ -136,6 +136,15 @@ var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 					return domNode;
 				};
 
+				// The initial draw used to be a side effect of `stepperBuilder`.
+				// Newer versions of `__Platform_initialize` do that instead.
+				// Older versions don’t send the `platformInitializeWillDoInitialDraw`
+				// parameter, which means that we need to do it here for compatibility.
+				if (!platformInitializeWillDoInitialDraw)
+				{
+					stepper(initialModel, true);
+				}
+
 				return stepper;
 			},
 			// Only used by newer versions of __Platform_initialize.
@@ -174,7 +183,7 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 			wrappedImpl.__$init,
 			wrappedImpl.__$update,
 			wrappedImpl.__$subscriptions,
-			function(sendToApp, initialModel)
+			function(sendToApp, initialModel, platformInitializeWillDoInitialDraw)
 			{
 				var divertHrefToApp = impl.__$setup && impl.__$setup(function(x) { return sendToApp(__Main_UserMsg(x)); });
 				var title = __VirtualDom_doc.title;
@@ -187,7 +196,7 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 
 				initialModel.__$popout.__sendToApp = sendToApp;
 
-				var stepper = _Browser_makeAnimator(initialModel, function(model)
+				var stepper = _Browser_makeAnimator(function(model)
 				{
 					__VirtualDom_divertHrefToApp = divertHrefToApp;
 					var doc = wrappedImpl.__$view(__Main_getUserModel(model));
@@ -262,6 +271,15 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 
 					return bodyNode;
 				};
+
+				// The initial draw used to be a side effect of `stepperBuilder`.
+				// Newer versions of `__Platform_initialize` do that instead.
+				// Older versions don’t send the `platformInitializeWillDoInitialDraw`
+				// parameter, which means that we need to do it here for compatibility.
+				if (!platformInitializeWillDoInitialDraw)
+				{
+					stepper(initialModel, true);
+				}
 
 				return stepper;
 			},
