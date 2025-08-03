@@ -67,7 +67,7 @@ var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 
 				initialModel.__$popout.__sendToApp = sendToApp;
 
-				return _Browser_makeAnimator(initialModel, function(model)
+				var stepper = _Browser_makeAnimator(initialModel, function(model)
 				{
 					var nextNode = A2(__VirtualDom_map, __Main_UserMsg, wrappedImpl.__$view(__Main_getUserModel(model)));
 					var patches = __VirtualDom_diff(currNode, nextNode);
@@ -103,6 +103,40 @@ var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 					currPopout = nextPopout;
 					__VirtualDom_doc = document; // SWITCH BACK TO NORMAL DOC
 				});
+
+				stepper.__$shutdown = function()
+				{
+					// Remove corner.
+					cornerNode.parentNode.removeChild(cornerNode);
+
+					// Remove blockers.
+					_Debugger_updateBlocker(currBlocker, __Overlay_BlockNone);
+
+					// Close popout if open.
+					var popout = initialModel.__$popout;
+					if (popout.__doc)
+					{
+						var debuggerWindow = popout.__doc.defaultView;
+						popout.__doc = undefined;
+						popout.__sendToApp(__Main_NoOp);
+						debuggerWindow.close();
+					}
+
+					// Allow the app to be garbage collected. `Function.prototype` is a no-op function.
+					// Note that we cannot use `function () {}` here, because it has `sendToApp` in scope,
+					// which prevents garbage collection.
+					popout.__sendToApp = Function.prototype;
+
+					// Older versions of elm/virtual-dom does not provide this function.
+					if (typeof _VirtualDom_removeAllEventListeners === 'function')
+					{
+						_VirtualDom_removeAllEventListeners(domNode);
+					}
+
+					return domNode;
+				};
+
+				return stepper;
 			},
 			// Only used by newer versions of __Platform_initialize.
 			wrappedImpl
@@ -153,7 +187,7 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 
 				initialModel.__$popout.__sendToApp = sendToApp;
 
-				return _Browser_makeAnimator(initialModel, function(model)
+				var stepper = _Browser_makeAnimator(initialModel, function(model)
 				{
 					__VirtualDom_divertHrefToApp = divertHrefToApp;
 					var doc = wrappedImpl.__$view(__Main_getUserModel(model));
@@ -187,6 +221,49 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 					currPopout = nextPopout;
 					__VirtualDom_doc = document; // SWITCH BACK TO NORMAL DOC
 				});
+
+				stepper.__$shutdown = function()
+				{
+					// Remove corner.
+					// Older versions of elm/virtual-dom does not provide this function.
+					if (typeof _VirtualDom_removeLastElmChild === 'function')
+					{
+						_VirtualDom_removeLastElmChild(bodyNode);
+					}
+
+					// Remove blockers.
+					_Debugger_updateBlocker(currBlocker, __Overlay_BlockNone);
+
+					// Close popout if open.
+					var popout = initialModel.__$popout;
+					if (popout.__doc)
+					{
+						var debuggerWindow = popout.__doc.defaultView;
+						popout.__doc = undefined;
+						popout.__sendToApp(__Main_NoOp);
+						debuggerWindow.close();
+					}
+
+					// Allow the app to be garbage collected. `Function.prototype` is a no-op function.
+					// Note that we cannot use `function () {}` here, because it has `sendToApp` in scope,
+					// which prevents garbage collection.
+					popout.__sendToApp = Function.prototype;
+
+					// Older versions of elm/virtual-dom does not provide this function.
+					if (typeof _VirtualDom_removeAllEventListeners === 'function')
+					{
+						_VirtualDom_removeAllEventListeners(bodyNode);
+					}
+
+					if (impl.__$shutdown)
+					{
+						impl.__$shutdown();
+					}
+
+					return bodyNode;
+				};
+
+				return stepper;
 			},
 			// Only used by newer versions of __Platform_initialize.
 			wrappedImpl

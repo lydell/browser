@@ -47,13 +47,26 @@ var _Browser_element = __Debugger_element || F3(function(impl, flagDecoder, debu
 				//*/
 				var currNode = _VirtualDom_virtualize(domNode);
 
-				return _Browser_makeAnimator(initialModel, function(model)
+				var stepper = _Browser_makeAnimator(initialModel, function(model)
 				{
 					var nextNode = impl.__$view(model);
 					var patches = __VirtualDom_diff(currNode, nextNode);
 					domNode = __VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);
 					currNode = nextNode;
 				});
+
+				stepper.__$shutdown = function()
+				{
+					// Older versions of elm/virtual-dom does not provide this function.
+					if (typeof _VirtualDom_removeAllEventListeners === 'function')
+					{
+						_VirtualDom_removeAllEventListeners(domNode);
+					}
+
+					return domNode;
+				};
+
+				return stepper;
 			},
 			// Only used by newer versions of __Platform_initialize.
 			impl
@@ -97,7 +110,8 @@ var _Browser_document = __Debugger_document || F3(function(impl, flagDecoder, de
 				__VirtualDom_divertHrefToApp = divertHrefToApp;
 				var currNode = _VirtualDom_virtualize(bodyNode);
 				__VirtualDom_divertHrefToApp = 0;
-				return _Browser_makeAnimator(initialModel, function(model)
+
+				var stepper = _Browser_makeAnimator(initialModel, function(model)
 				{
 					__VirtualDom_divertHrefToApp = divertHrefToApp;
 					var doc = impl.__$view(model);
@@ -108,6 +122,24 @@ var _Browser_document = __Debugger_document || F3(function(impl, flagDecoder, de
 					__VirtualDom_divertHrefToApp = 0;
 					(title !== doc.__$title) && (__VirtualDom_doc.title = title = doc.__$title);
 				});
+
+				stepper.__$shutdown = function()
+				{
+					// Older versions of elm/virtual-dom does not provide this function.
+					if (typeof _VirtualDom_removeAllEventListeners === 'function')
+					{
+						_VirtualDom_removeAllEventListeners(bodyNode);
+					}
+
+					if (impl.__$shutdown)
+					{
+						impl.__$shutdown();
+					}
+
+					return bodyNode;
+				};
+
+				return stepper;
 			},
 			// Only used by newer versions of __Platform_initialize.
 			impl
@@ -274,6 +306,13 @@ function _Browser_application(impl)
 					));
 				}
 			});
+		},
+		__$shutdown: function()
+		{
+			_Browser_window.removeEventListener('popstate', key);
+			_Browser_window.removeEventListener('hashchange', key);
+			// Allow the app to be garbage collected.
+			key.__sendToApp = function() {};
 		},
 		__$init: function(flags)
 		{
