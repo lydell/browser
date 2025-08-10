@@ -298,6 +298,11 @@ function _Browser_application(impl)
 {
 	var key = function() { key.__sendToApp(impl.__$onUrlChange(_Browser_getUrl())); };
 
+	if (typeof _Lamdera_navKey === 'function')
+	{
+		_Lamdera_navKey = key;
+	}
+
 	return _Browser_document({
 		__$setup: function(sendToApp)
 		{
