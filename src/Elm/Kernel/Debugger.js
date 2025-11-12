@@ -7,8 +7,8 @@ import Elm.Kernel.Browser exposing (makeAnimator)
 import Elm.Kernel.Debug exposing (crash)
 import Elm.Kernel.Json exposing (wrap)
 import Elm.Kernel.List exposing (Cons, Nil)
-import Elm.Kernel.Platform exposing (initialize)
-import Elm.Kernel.Scheduler exposing (binding, succeed)
+import Elm.Kernel.Platform exposing (effectManagers, initialize)
+import Elm.Kernel.Scheduler exposing (binding, enqueue, succeed)
 import Elm.Kernel.Utils exposing (Tuple0, Tuple2, ap)
 import Elm.Kernel.VirtualDom exposing (node, applyPatches, diff, doc, makeStepper, map, render, virtualize, divertHrefToApp)
 import Json.Decode as Json exposing (map)
@@ -35,127 +35,268 @@ function _Debugger_unsafeCoerce(value)
 // PROGRAMS
 
 
-var _Debugger_element = F4(function(impl, flagDecoder, debugMetadata, args)
+var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 {
-	return __Platform_initialize(
-		flagDecoder,
-		args,
-		A3(__Main_wrapInit, __Json_wrap(debugMetadata), _Debugger_popout(), impl.__$init),
-		__Main_wrapUpdate(impl.__$update),
-		__Main_wrapSubs(impl.__$subscriptions),
-		function(sendToApp, initialModel)
-		{
-			var view = impl.__$view;
-			var domNode = args && args['node'] ? args['node'] : __Debug_crash(0);
-			var currNode = __VirtualDom_virtualize(domNode);
-			var currBlocker = __Main_toBlockerType(initialModel);
-			var currPopout;
+	var wrappedImpl = {
+		__$init: A3(__Main_wrapInit, __Json_wrap(debugMetadata), _Debugger_popout(), impl.__$init),
+		__$view: impl.__$view,
+		__$update: __Main_wrapUpdate(impl.__$update),
+		__$subscriptions: __Main_wrapSubs(impl.__$subscriptions)
+	};
 
-			var cornerNode = __VirtualDom_doc.createElement('div');
-			domNode.parentNode.insertBefore(cornerNode, domNode.nextSibling);
-			var cornerCurr = __VirtualDom_virtualize(cornerNode);
-
-			initialModel.__$popout.__sendToApp = sendToApp;
-
-			return _Browser_makeAnimator(initialModel, function(model)
+	var init = function(args)
+	{
+		return __Platform_initialize(
+			flagDecoder,
+			args,
+			// These three arguments are used by old versions of __Platform_initialize.
+			// Newer versions ignore them.
+			wrappedImpl.__$init,
+			wrappedImpl.__$update,
+			wrappedImpl.__$subscriptions,
+			function(sendToApp, initialModel, platformInitializeWillDoInitialDraw)
 			{
-				var nextNode = A2(__VirtualDom_map, __Main_UserMsg, view(__Main_getUserModel(model)));
-				var patches = __VirtualDom_diff(currNode, nextNode);
-				domNode = __VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);
-				currNode = nextNode;
+				var domNode = args && args['node'] ? args['node'] : __Debug_crash(0);
+				var currNode = __VirtualDom_virtualize(domNode);
+				var currBlocker = __Main_toBlockerType(initialModel);
+				var currPopout;
 
-				// update blocker
+				var cornerNode = __VirtualDom_doc.createElement('div');
+				domNode.parentNode.insertBefore(cornerNode, domNode.nextSibling);
+				var cornerCurr = __VirtualDom_virtualize(cornerNode);
 
-				var nextBlocker = __Main_toBlockerType(model);
-				_Debugger_updateBlocker(currBlocker, nextBlocker);
-				currBlocker = nextBlocker;
+				initialModel.__$popout.__sendToApp = sendToApp;
 
-				// view corner
-
-				var cornerNext = __Main_cornerView(model);
-				var cornerPatches = __VirtualDom_diff(cornerCurr, cornerNext);
-				cornerNode = __VirtualDom_applyPatches(cornerNode, cornerCurr, cornerPatches, sendToApp);
-				cornerCurr = cornerNext;
-
-				if (!model.__$popout.__doc)
+				var stepper = _Browser_makeAnimator(function(model)
 				{
-					currPopout = undefined;
-					return;
+					var nextNode = A2(__VirtualDom_map, __Main_UserMsg, wrappedImpl.__$view(__Main_getUserModel(model)));
+					var patches = __VirtualDom_diff(currNode, nextNode);
+					domNode = __VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);
+					currNode = nextNode;
+
+					// update blocker
+
+					var nextBlocker = __Main_toBlockerType(model);
+					_Debugger_updateBlocker(currBlocker, nextBlocker);
+					currBlocker = nextBlocker;
+
+					// view corner
+
+					var cornerNext = __Main_cornerView(model);
+					var cornerPatches = __VirtualDom_diff(cornerCurr, cornerNext);
+					cornerNode = __VirtualDom_applyPatches(cornerNode, cornerCurr, cornerPatches, sendToApp);
+					cornerCurr = cornerNext;
+
+					if (!model.__$popout.__doc)
+					{
+						currPopout = undefined;
+						return;
+					}
+
+					// view popout
+
+					__VirtualDom_doc = model.__$popout.__doc; // SWITCH TO POPOUT DOC
+					currPopout || (currPopout = __VirtualDom_virtualize(model.__$popout.__doc.body));
+					var nextPopout = __Main_popoutView(model);
+					var popoutPatches = __VirtualDom_diff(currPopout, nextPopout);
+					__VirtualDom_applyPatches(model.__$popout.__doc.body, currPopout, popoutPatches, sendToApp);
+					currPopout = nextPopout;
+					__VirtualDom_doc = document; // SWITCH BACK TO NORMAL DOC
+				});
+
+				stepper.__$shutdown = function()
+				{
+					// Remove corner.
+					cornerNode.parentNode.removeChild(cornerNode);
+
+					// Remove blockers.
+					_Debugger_updateBlocker(currBlocker, __Overlay_BlockNone);
+
+					// Close popout if open.
+					var popout = initialModel.__$popout;
+					if (popout.__doc)
+					{
+						var debuggerWindow = popout.__doc.defaultView;
+						popout.__doc = undefined;
+						popout.__sendToApp(__Main_NoOp);
+						debuggerWindow.close();
+					}
+
+					// Allow the app to be garbage collected. `Function.prototype` is a no-op function.
+					// Note that we cannot use `function () {}` here, because it has `sendToApp` in scope,
+					// which prevents garbage collection.
+					popout.__sendToApp = Function.prototype;
+
+					// Older versions of elm/virtual-dom does not provide this function.
+					if (typeof _VirtualDom_removeAllEventListeners === 'function')
+					{
+						_VirtualDom_removeAllEventListeners(domNode);
+					}
+
+					return domNode;
+				};
+
+				// The initial draw used to be a side effect of `stepperBuilder`.
+				// Newer versions of `__Platform_initialize` do that instead.
+				// Older versions don’t send the `platformInitializeWillDoInitialDraw`
+				// parameter, which means that we need to do it here for compatibility.
+				if (!platformInitializeWillDoInitialDraw)
+				{
+					stepper(initialModel, true);
 				}
 
-				// view popout
+				return stepper;
+			},
+			// Only used by newer versions of __Platform_initialize.
+			wrappedImpl
+		);
+	};
 
-				__VirtualDom_doc = model.__$popout.__doc; // SWITCH TO POPOUT DOC
-				currPopout || (currPopout = __VirtualDom_virtualize(model.__$popout.__doc.body));
-				var nextPopout = __Main_popoutView(model);
-				var popoutPatches = __VirtualDom_diff(currPopout, nextPopout);
-				__VirtualDom_applyPatches(model.__$popout.__doc.body, currPopout, popoutPatches, sendToApp);
-				currPopout = nextPopout;
-				__VirtualDom_doc = document; // SWITCH BACK TO NORMAL DOC
-			});
-		}
-	);
+	/**__DEBUG/
+	init.hotReloadData = {
+		__$impl: wrappedImpl,
+		__$platform_effectManagers: __Platform_effectManagers,
+		__$scheduler_enqueue: __Scheduler_enqueue
+	};
+	//*/
+
+	return init;
 });
 
 
-var _Debugger_document = F4(function(impl, flagDecoder, debugMetadata, args)
+var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 {
-	return __Platform_initialize(
-		flagDecoder,
-		args,
-		A3(__Main_wrapInit, __Json_wrap(debugMetadata), _Debugger_popout(), impl.__$init),
-		__Main_wrapUpdate(impl.__$update),
-		__Main_wrapSubs(impl.__$subscriptions),
-		function(sendToApp, initialModel)
-		{
-			var divertHrefToApp = impl.__$setup && impl.__$setup(function(x) { return sendToApp(__Main_UserMsg(x)); });
-			var view = impl.__$view;
-			var title = __VirtualDom_doc.title;
-			var bodyNode = __VirtualDom_doc.body;
-			__VirtualDom_divertHrefToApp = divertHrefToApp;
-			var currNode = __VirtualDom_virtualize(bodyNode);
-			__VirtualDom_divertHrefToApp = 0;
-			var currBlocker = __Main_toBlockerType(initialModel);
-			var currPopout;
+	var wrappedImpl = {
+		__$init: A3(__Main_wrapInit, __Json_wrap(debugMetadata), _Debugger_popout(), impl.__$init),
+		__$view: impl.__$view,
+		__$update: __Main_wrapUpdate(impl.__$update),
+		__$subscriptions: __Main_wrapSubs(impl.__$subscriptions)
+	};
 
-			initialModel.__$popout.__sendToApp = sendToApp;
-
-			return _Browser_makeAnimator(initialModel, function(model)
+	var init = function(args)
+	{
+		return __Platform_initialize(
+			flagDecoder,
+			args,
+			// These three arguments are used by old versions of __Platform_initialize.
+			// Newer versions ignore them.
+			wrappedImpl.__$init,
+			wrappedImpl.__$update,
+			wrappedImpl.__$subscriptions,
+			function(sendToApp, initialModel, platformInitializeWillDoInitialDraw)
 			{
+				var divertHrefToApp = impl.__$setup && impl.__$setup(function(x) { return sendToApp(__Main_UserMsg(x)); });
+				var title = __VirtualDom_doc.title;
+				var bodyNode = __VirtualDom_doc.body;
 				__VirtualDom_divertHrefToApp = divertHrefToApp;
-				var doc = view(__Main_getUserModel(model));
-				var nextNode = __VirtualDom_node('body')(__List_Nil)(
-					__Utils_ap(
-						A2(__List_map, __VirtualDom_map(__Main_UserMsg), doc.__$body),
-						__List_Cons(__Main_cornerView(model), __List_Nil)
-					)
-				);
-				var patches = __VirtualDom_diff(currNode, nextNode);
-				bodyNode = __VirtualDom_applyPatches(bodyNode, currNode, patches, sendToApp);
-				currNode = nextNode;
+				var currNode = __VirtualDom_virtualize(bodyNode);
 				__VirtualDom_divertHrefToApp = 0;
-				(title !== doc.__$title) && (__VirtualDom_doc.title = title = doc.__$title);
+				var currBlocker = __Main_toBlockerType(initialModel);
+				var currPopout;
 
-				// update blocker
+				initialModel.__$popout.__sendToApp = sendToApp;
 
-				var nextBlocker = __Main_toBlockerType(model);
-				_Debugger_updateBlocker(currBlocker, nextBlocker);
-				currBlocker = nextBlocker;
+				var stepper = _Browser_makeAnimator(function(model)
+				{
+					__VirtualDom_divertHrefToApp = divertHrefToApp;
+					var doc = wrappedImpl.__$view(__Main_getUserModel(model));
+					var nextNode = __VirtualDom_node('body')(__List_Nil)(
+						__Utils_ap(
+							A2(__List_map, __VirtualDom_map(__Main_UserMsg), doc.__$body),
+							__List_Cons(__Main_cornerView(model), __List_Nil)
+						)
+					);
+					var patches = __VirtualDom_diff(currNode, nextNode);
+					bodyNode = __VirtualDom_applyPatches(bodyNode, currNode, patches, sendToApp);
+					currNode = nextNode;
+					__VirtualDom_divertHrefToApp = 0;
+					(title !== doc.__$title) && (__VirtualDom_doc.title = title = doc.__$title);
 
-				// view popout
+					// update blocker
 
-				if (!model.__$popout.__doc) { currPopout = undefined; return; }
+					var nextBlocker = __Main_toBlockerType(model);
+					_Debugger_updateBlocker(currBlocker, nextBlocker);
+					currBlocker = nextBlocker;
 
-				__VirtualDom_doc = model.__$popout.__doc; // SWITCH TO POPOUT DOC
-				currPopout || (currPopout = __VirtualDom_virtualize(model.__$popout.__doc.body));
-				var nextPopout = __Main_popoutView(model);
-				var popoutPatches = __VirtualDom_diff(currPopout, nextPopout);
-				__VirtualDom_applyPatches(model.__$popout.__doc.body, currPopout, popoutPatches, sendToApp);
-				currPopout = nextPopout;
-				__VirtualDom_doc = document; // SWITCH BACK TO NORMAL DOC
-			});
-		}
-	);
+					// view popout
+
+					if (!model.__$popout.__doc) { currPopout = undefined; return; }
+
+					__VirtualDom_doc = model.__$popout.__doc; // SWITCH TO POPOUT DOC
+					currPopout || (currPopout = __VirtualDom_virtualize(model.__$popout.__doc.body));
+					var nextPopout = __Main_popoutView(model);
+					var popoutPatches = __VirtualDom_diff(currPopout, nextPopout);
+					__VirtualDom_applyPatches(model.__$popout.__doc.body, currPopout, popoutPatches, sendToApp);
+					currPopout = nextPopout;
+					__VirtualDom_doc = document; // SWITCH BACK TO NORMAL DOC
+				});
+
+				stepper.__$shutdown = function()
+				{
+					// Remove corner.
+					// Older versions of elm/virtual-dom does not provide this function.
+					if (typeof _VirtualDom_removeLastElmChild === 'function')
+					{
+						_VirtualDom_removeLastElmChild(bodyNode);
+					}
+
+					// Remove blockers.
+					_Debugger_updateBlocker(currBlocker, __Overlay_BlockNone);
+
+					// Close popout if open.
+					var popout = initialModel.__$popout;
+					if (popout.__doc)
+					{
+						var debuggerWindow = popout.__doc.defaultView;
+						popout.__doc = undefined;
+						popout.__sendToApp(__Main_NoOp);
+						debuggerWindow.close();
+					}
+
+					// Allow the app to be garbage collected. `Function.prototype` is a no-op function.
+					// Note that we cannot use `function () {}` here, because it has `sendToApp` in scope,
+					// which prevents garbage collection.
+					popout.__sendToApp = Function.prototype;
+
+					// Older versions of elm/virtual-dom does not provide this function.
+					if (typeof _VirtualDom_removeAllEventListeners === 'function')
+					{
+						_VirtualDom_removeAllEventListeners(bodyNode);
+					}
+
+					if (impl.__$shutdown)
+					{
+						impl.__$shutdown();
+					}
+
+					return bodyNode;
+				};
+
+				// The initial draw used to be a side effect of `stepperBuilder`.
+				// Newer versions of `__Platform_initialize` do that instead.
+				// Older versions don’t send the `platformInitializeWillDoInitialDraw`
+				// parameter, which means that we need to do it here for compatibility.
+				if (!platformInitializeWillDoInitialDraw)
+				{
+					stepper(initialModel, true);
+				}
+
+				return stepper;
+			},
+			// Only used by newer versions of __Platform_initialize.
+			wrappedImpl
+		);
+	};
+
+	/**__DEBUG/
+	init.hotReloadData = {
+		__$impl: wrappedImpl,
+		__$platform_effectManagers: __Platform_effectManagers,
+		__$scheduler_enqueue: __Scheduler_enqueue
+	};
+	//*/
+
+	return init;
 });
 
 
