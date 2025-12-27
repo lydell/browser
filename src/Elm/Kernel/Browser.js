@@ -296,12 +296,21 @@ function _Browser_makeAnimator(draw)
 
 function _Browser_application(impl)
 {
+	// In plain Elm, `Browser.Navigation.Key` is the `key` function below.
+	// Functions that take it, such as `Browser.Navigation.pushUrl`, call
+	// that function to send an URL changed message to the app.
+	// In Lamdera, `Browser.Navigation.Key` is a “useless” opaque value
+	// that you just use as a “password” to `Browser.Navigation.pushUrl`
+	// and friends. The actual function is stored in a semi-global variable
+	// instead – `_Browser_key`. This means that a second application would
+	// overwrite the first, but it doesn’t matter since both apps would
+	// fight over `document.body` anyway. Instead, having `_Browser_key`
+	// allows Wire-ing the model from an old app to a new without having to
+	// do any complicated Wire stuff just for `Browser.Navigation.Key`, and
+	// trying to update that `key` function to refer to stuff in the new app.
+	var modelKey = { $: 0 };
 	var key = function() { key.__sendToApp(impl.__$onUrlChange(_Browser_getUrl())); };
-
-	if (typeof _Lamdera_navKey === 'function')
-	{
-		_Lamdera_navKey = key;
-	}
+	_Browser_key = key;
 
 	return _Browser_document({
 		__$setup: function(sendToApp)
@@ -335,11 +344,11 @@ function _Browser_application(impl)
 			_Browser_window.removeEventListener('popstate', key);
 			_Browser_window.removeEventListener('hashchange', key);
 			// Allow the app to be garbage collected.
-			key.__sendToApp = function() {};
+			_Browser_key = null;
 		},
 		__$init: function(flags)
 		{
-			return A3(impl.__$init, flags, _Browser_getUrl(), key);
+			return A3(impl.__$init, flags, _Browser_getUrl(), modelKey);
 		},
 		// Unnecessary-looking wrapper functions are needed during development
 		// for hot reloading. In production, we optimize slightly by omitting them.
@@ -361,27 +370,29 @@ function _Browser_getUrl()
 	return __Url_fromString(__VirtualDom_doc.location.href).a || __Debug_crash(1);
 }
 
-var _Browser_go = F2(function(key, n)
+var _Browser_key = null;
+
+var _Browser_go = F2(function(_key, n)
 {
 	return A2(__Task_perform, __Basics_never, __Scheduler_binding(function() {
 		n && history.go(n);
-		key();
+		_Browser_key();
 	}));
 });
 
-var _Browser_pushUrl = F2(function(key, url)
+var _Browser_pushUrl = F2(function(_key, url)
 {
 	return A2(__Task_perform, __Basics_never, __Scheduler_binding(function() {
 		history.pushState({}, '', url);
-		key();
+		_Browser_key();
 	}));
 });
 
-var _Browser_replaceUrl = F2(function(key, url)
+var _Browser_replaceUrl = F2(function(_key, url)
 {
 	return A2(__Task_perform, __Basics_never, __Scheduler_binding(function() {
 		history.replaceState({}, '', url);
-		key();
+		_Browser_key();
 	}));
 });
 
