@@ -344,6 +344,7 @@ function _Browser_application(impl)
 			_Browser_window.removeEventListener('popstate', key);
 			_Browser_window.removeEventListener('hashchange', key);
 			// Allow the app to be garbage collected.
+			key.__sendToApp = function() {};
 			_Browser_key = null;
 		},
 		__$init: function(flags)
