@@ -74,10 +74,74 @@ maximumItemsToView path expando =
 
 init : a -> Expando
 init value =
-  { unexpanded = Elm.Kernel.Debugger.toUnexpanded value
-  , expanded = Set.singleton []
-  , viewMore = Dict.empty
-  }
+  let
+    expando =
+      { unexpanded = Elm.Kernel.Debugger.toUnexpanded value
+      , expanded = Set.empty
+      , viewMore = Dict.empty
+      }
+  in
+  -- `[]` is the root path. Always start with the root expanded.
+  { expando | expanded = Set.fromList ([] :: initiallyExpandedChildren expando) }
+
+
+initiallyExpandedChildren : Expando -> List Path
+initiallyExpandedChildren expando =
+  let
+    ifSmall path child =
+      if isSmall child then Just path else Nothing
+
+    max = maximumItemsToView [] expando
+  in
+  case Elm.Kernel.Debugger.init expando.unexpanded of
+    S _ ->
+      []
+
+    Primitive _ ->
+      []
+
+    Sequence _ items ->
+      List.take max items
+        |> List.indexedMap (\index item -> ifSmall [ String.fromInt index ] item)
+        |> List.filterMap identity
+
+    Dictionary keyValuePairs ->
+      List.take max keyValuePairs
+        |> List.indexedMap (\index ( key, value ) -> ifSmall (dictValuePath index key) value)
+        |> List.filterMap identity
+
+    Record record ->
+      Dict.toList record
+        |> List.filterMap (\( field, value ) -> ifSmall [ field ] value)
+
+    -- A single argument is shown inline, under the constructor’s own toggle.
+    Constructor _ [ _ ] ->
+      []
+
+    Constructor _ args ->
+      args
+        |> List.indexedMap (\index arg -> ifSmall [ String.fromInt index, "0" ] arg)
+        |> List.filterMap identity
+
+
+-- Must match the paths used in `viewDictionaryEntry`.
+dictValuePath : Int -> Unexpanded -> Path
+dictValuePath index key =
+  case Elm.Kernel.Debugger.init key of
+    S stringRep -> [ stringRep ]
+    Primitive stringRep -> [ stringRep ]
+    _ -> [ "value", String.fromInt index ]
+
+
+isSmall : Unexpanded -> Bool
+isSmall unexpanded =
+  case Elm.Kernel.Debugger.init unexpanded of
+    S _ -> False
+    Primitive _ -> False
+    Sequence _ items -> List.isEmpty (List.drop 8 items)
+    Dictionary keyValuePairs -> List.isEmpty (List.drop 8 keyValuePairs)
+    Record record -> Dict.size record <= 4
+    Constructor _ args -> List.length args <= 4
 
 
 
