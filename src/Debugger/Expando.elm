@@ -240,14 +240,14 @@ viewDictionaryOpenHelp path expando index max keyValuePairs acc =
           (index + 1)
           max
           rest
-          (viewDictionaryEntry (String.fromInt index :: path) expando keyValue :: acc)
+          (viewDictionaryEntry path index expando keyValue :: acc)
 
       else
         List.reverse (viewMoreButton path :: acc)
 
 
-viewDictionaryEntry : Path -> Expando -> (Unexpanded, Unexpanded) -> Html Msg
-viewDictionaryEntry path expando ( key, value ) =
+viewDictionaryEntry : Path -> Int -> Expando -> (Unexpanded, Unexpanded) -> Html Msg
+viewDictionaryEntry path index expando ( key, value ) =
   case Elm.Kernel.Debugger.init key of
     S stringRep ->
       view (stringRep :: path) { expando | unexpanded = value }
@@ -257,8 +257,8 @@ viewDictionaryEntry path expando ( key, value ) =
 
     _ ->
       div []
-        [ view ("key" :: path) { expando | unexpanded = key }
-        , view ("value" :: path) { expando | unexpanded = value }
+        [ view ("key" :: String.fromInt index :: path) { expando | unexpanded = key }
+        , view ("value" :: String.fromInt index :: path) { expando | unexpanded = value }
         ]
 
 
