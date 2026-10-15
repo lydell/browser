@@ -183,11 +183,11 @@ viewSequenceOpen path expando values =
 
 viewSequenceOpenHelp : Path -> Expando -> Int -> Int -> List Unexpanded -> List (Html Msg) -> List (Html Msg)
 viewSequenceOpenHelp path expando index max values acc =
-  if index < max then
-    case values of
-      [] -> List.reverse acc
+  case values of
+    [] -> List.reverse acc
 
-      value :: rest ->
+    value :: rest ->
+      if index < max then
         viewSequenceOpenHelp
           path
           expando
@@ -196,8 +196,8 @@ viewSequenceOpenHelp path expando index max values acc =
           rest
           (viewConstructorEntry path expando index value :: acc)
 
-  else
-    List.reverse (viewMoreButton path :: acc)
+      else
+        List.reverse (viewMoreButton path :: acc)
 
 
 
@@ -229,11 +229,11 @@ viewDictionaryOpen path expando keyValuePairs =
 
 viewDictionaryOpenHelp : Path -> Expando -> Int -> Int -> List (Unexpanded, Unexpanded) -> List (Html Msg) -> List (Html Msg)
 viewDictionaryOpenHelp path expando index max keyValuePairs acc =
-  if index < max then
-    case keyValuePairs of
-      [] -> List.reverse acc
+  case keyValuePairs of
+    [] -> List.reverse acc
 
-      keyValue :: rest ->
+    keyValue :: rest ->
+      if index < max then
         viewDictionaryOpenHelp
           path
           expando
@@ -242,8 +242,8 @@ viewDictionaryOpenHelp path expando index max keyValuePairs acc =
           rest
           (viewDictionaryEntry (String.fromInt index :: path) expando keyValue :: acc)
 
-  else
-    List.reverse (viewMoreButton path :: acc)
+      else
+        List.reverse (viewMoreButton path :: acc)
 
 
 viewDictionaryEntry : Path -> Expando -> (Unexpanded, Unexpanded) -> Html Msg
