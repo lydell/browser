@@ -248,7 +248,7 @@ wrapUpdate update msg model =
                 , Cmd.none
                 )
 
-          Paused _ _ userModel userMsg _ ->
+          Paused _ _ _ _ _ ->
               ( model, Cmd.none )
 
     Resume ->
