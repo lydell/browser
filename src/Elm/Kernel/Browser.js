@@ -8,7 +8,7 @@ import Elm.Kernel.Debugger exposing (element, document)
 import Elm.Kernel.Json exposing (runHelp)
 import Elm.Kernel.List exposing (Nil)
 import Elm.Kernel.Platform exposing (effectManagers, initialize)
-import Elm.Kernel.Scheduler exposing (binding, enqueue, fail, rawSpawn, succeed, spawn)
+import Elm.Kernel.Scheduler exposing (binding, fail, rawSpawn, succeed, spawn)
 import Elm.Kernel.Utils exposing (Tuple0, Tuple2)
 import Elm.Kernel.VirtualDom exposing (appendChild, applyPatches, diff, doc, node, passiveSupported, render, divertHrefToApp)
 import Json.Decode as Json exposing (map)
@@ -88,8 +88,7 @@ var _Browser_element = __Debugger_element || F3(function(impl, flagDecoder, debu
 	/**__DEBUG/
 	init.hotReloadData = {
 		__$impl: impl,
-		__$platform_effectManagers: __Platform_effectManagers,
-		__$scheduler_enqueue: __Scheduler_enqueue
+		__$platform_effectManagers: __Platform_effectManagers
 	};
 	//*/
 
@@ -178,8 +177,7 @@ var _Browser_document = __Debugger_document || F3(function(impl, flagDecoder, de
 	/**__DEBUG/
 	init.hotReloadData = {
 		__$impl: impl,
-		__$platform_effectManagers: __Platform_effectManagers,
-		__$scheduler_enqueue: __Scheduler_enqueue
+		__$platform_effectManagers: __Platform_effectManagers
 	};
 	//*/
 

@@ -8,7 +8,7 @@ import Elm.Kernel.Debug exposing (crash)
 import Elm.Kernel.Json exposing (wrap)
 import Elm.Kernel.List exposing (Cons, Nil)
 import Elm.Kernel.Platform exposing (effectManagers, initialize)
-import Elm.Kernel.Scheduler exposing (binding, enqueue, succeed)
+import Elm.Kernel.Scheduler exposing (binding, succeed)
 import Elm.Kernel.Utils exposing (Tuple0, Tuple2, ap)
 import Elm.Kernel.VirtualDom exposing (node, applyPatches, diff, doc, makeStepper, map, render, virtualize, divertHrefToApp)
 import Json.Decode as Json exposing (map)
@@ -168,8 +168,7 @@ var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 	/**__DEBUG/
 	init.hotReloadData = {
 		__$impl: wrappedImpl,
-		__$platform_effectManagers: __Platform_effectManagers,
-		__$scheduler_enqueue: __Scheduler_enqueue
+		__$platform_effectManagers: __Platform_effectManagers
 	};
 	//*/
 
@@ -314,8 +313,7 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 	/**__DEBUG/
 	init.hotReloadData = {
 		__$impl: wrappedImpl,
-		__$platform_effectManagers: __Platform_effectManagers,
-		__$scheduler_enqueue: __Scheduler_enqueue
+		__$platform_effectManagers: __Platform_effectManagers
 	};
 	//*/
 
