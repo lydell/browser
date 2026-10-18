@@ -3,7 +3,7 @@
 import Debugger.Expando as Expando exposing (S, Primitive, Sequence, Dictionary, Record, Constructor, ListSeq, SetSeq, ArraySeq)
 import Debugger.Main as Main exposing (getUserModel, wrapInit, wrapUpdate, wrapSubs, cornerView, popoutView, NoOp, UserMsg, Up, Down, toBlockerType, initialWindowWidth, initialWindowHeight)
 import Debugger.Overlay as Overlay exposing (BlockNone, BlockMost)
-import Elm.Kernel.Browser exposing (makeAnimator)
+import Elm.Kernel.Browser exposing (afterDraw, makeAnimator)
 import Elm.Kernel.Debug exposing (crash)
 import Elm.Kernel.Json exposing (wrap)
 import Elm.Kernel.List exposing (Cons, Nil)
@@ -113,35 +113,38 @@ var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 
 				stepper.__$shutdown = function()
 				{
-					// Remove corner. (Support it already being removed by an extension or script.)
-					if (cornerNode.parentNode)
+					_Browser_afterDraw(function()
 					{
-						cornerNode.parentNode.removeChild(cornerNode);
-					}
+						// Remove corner. (Support it already being removed by an extension or script.)
+						if (cornerNode.parentNode)
+						{
+							cornerNode.parentNode.removeChild(cornerNode);
+						}
 
-					// Remove blockers.
-					_Debugger_updateBlocker(currBlocker, __Overlay_BlockNone);
+						// Remove blockers.
+						_Debugger_updateBlocker(currBlocker, __Overlay_BlockNone);
 
-					// Close popout if open.
-					var popout = initialModel.__$popout;
-					if (popout.__doc)
-					{
-						var debuggerWindow = popout.__doc.defaultView;
-						popout.__doc = undefined;
-						popout.__sendToApp(__Main_NoOp);
-						debuggerWindow.close();
-					}
+						// Close popout if open.
+						var popout = initialModel.__$popout;
+						if (popout.__doc)
+						{
+							var debuggerWindow = popout.__doc.defaultView;
+							popout.__doc = undefined;
+							popout.__sendToApp(__Main_NoOp);
+							debuggerWindow.close();
+						}
 
-					// Allow the app to be garbage collected. `Function.prototype` is a no-op function.
-					// Note that we cannot use `function () {}` here, because it has `sendToApp` in scope,
-					// which prevents garbage collection.
-					popout.__sendToApp = Function.prototype;
+						// Allow the app to be garbage collected. `Function.prototype` is a no-op function.
+						// Note that we cannot use `function () {}` here, because it has `sendToApp` in scope,
+						// which prevents garbage collection.
+						popout.__sendToApp = Function.prototype;
 
-					// Older versions of elm/virtual-dom do not provide this function.
-					if (typeof _VirtualDom_removeAllEventListeners === 'function')
-					{
-						_VirtualDom_removeAllEventListeners(domNode);
-					}
+						// Older versions of elm/virtual-dom do not provide this function.
+						if (typeof _VirtualDom_removeAllEventListeners === 'function')
+						{
+							_VirtualDom_removeAllEventListeners(domNode);
+						}
+					});
 
 					return domNode;
 				};
@@ -250,41 +253,44 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 
 				stepper.__$shutdown = function()
 				{
-					// Remove corner.
-					// Older versions of elm/virtual-dom do not provide this function.
-					if (typeof _VirtualDom_removeLastElmChild === 'function')
+					_Browser_afterDraw(function()
 					{
-						_VirtualDom_removeLastElmChild(bodyNode);
-					}
+						// Remove corner.
+						// Older versions of elm/virtual-dom do not provide this function.
+						if (typeof _VirtualDom_removeLastElmChild === 'function')
+						{
+							_VirtualDom_removeLastElmChild(bodyNode);
+						}
 
-					// Remove blockers.
-					_Debugger_updateBlocker(currBlocker, __Overlay_BlockNone);
+						// Remove blockers.
+						_Debugger_updateBlocker(currBlocker, __Overlay_BlockNone);
 
-					// Close popout if open.
-					var popout = initialModel.__$popout;
-					if (popout.__doc)
-					{
-						var debuggerWindow = popout.__doc.defaultView;
-						popout.__doc = undefined;
-						popout.__sendToApp(__Main_NoOp);
-						debuggerWindow.close();
-					}
+						// Close popout if open.
+						var popout = initialModel.__$popout;
+						if (popout.__doc)
+						{
+							var debuggerWindow = popout.__doc.defaultView;
+							popout.__doc = undefined;
+							popout.__sendToApp(__Main_NoOp);
+							debuggerWindow.close();
+						}
 
-					// Allow the app to be garbage collected. `Function.prototype` is a no-op function.
-					// Note that we cannot use `function () {}` here, because it has `sendToApp` in scope,
-					// which prevents garbage collection.
-					popout.__sendToApp = Function.prototype;
+						// Allow the app to be garbage collected. `Function.prototype` is a no-op function.
+						// Note that we cannot use `function () {}` here, because it has `sendToApp` in scope,
+						// which prevents garbage collection.
+						popout.__sendToApp = Function.prototype;
 
-					// Older versions of elm/virtual-dom do not provide this function.
-					if (typeof _VirtualDom_removeAllEventListeners === 'function')
-					{
-						_VirtualDom_removeAllEventListeners(bodyNode);
-					}
+						// Older versions of elm/virtual-dom do not provide this function.
+						if (typeof _VirtualDom_removeAllEventListeners === 'function')
+						{
+							_VirtualDom_removeAllEventListeners(bodyNode);
+						}
 
-					if (impl.__$shutdown)
-					{
-						impl.__$shutdown();
-					}
+						if (impl.__$shutdown)
+						{
+							impl.__$shutdown();
+						}
+					});
 
 					return bodyNode;
 				};

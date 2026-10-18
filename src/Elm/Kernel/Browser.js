@@ -57,11 +57,14 @@ var _Browser_element = __Debugger_element || F3(function(impl, flagDecoder, debu
 
 				stepper.__$shutdown = function()
 				{
-					// Older versions of elm/virtual-dom do not provide this function.
-					if (typeof _VirtualDom_removeAllEventListeners === 'function')
+					_Browser_afterDraw(function()
 					{
-						_VirtualDom_removeAllEventListeners(domNode);
-					}
+						// Older versions of elm/virtual-dom do not provide this function.
+						if (typeof _VirtualDom_removeAllEventListeners === 'function')
+						{
+							_VirtualDom_removeAllEventListeners(domNode);
+						}
+					});
 
 					return domNode;
 				};
@@ -135,20 +138,23 @@ var _Browser_document = __Debugger_document || F3(function(impl, flagDecoder, de
 
 				stepper.__$shutdown = function()
 				{
-					// Older versions of elm/virtual-dom do not provide this function.
-					if (typeof _VirtualDom_removeAllEventListeners === 'function')
+					_Browser_afterDraw(function()
 					{
-						_VirtualDom_removeAllEventListeners(bodyNode);
-					}
+						// Older versions of elm/virtual-dom do not provide this function.
+						if (typeof _VirtualDom_removeAllEventListeners === 'function')
+						{
+							_VirtualDom_removeAllEventListeners(bodyNode);
+						}
 
-					// `__$setup` is called just once, not for every hot reload.
-					// `shutdown` is supposed to clean up that original `__$setup`
-					// call, which is why we keep a local reference to `shutdown`
-					// here. `impl.__$shutdown` gets updated via hot reload.
-					if (shutdown)
-					{
-						shutdown();
-					}
+						// `__$setup` is called just once, not for every hot reload.
+						// `shutdown` is supposed to clean up that original `__$setup`
+						// call, which is why we keep a local reference to `shutdown`
+						// here. `impl.__$shutdown` gets updated via hot reload.
+						if (shutdown)
+						{
+							shutdown();
+						}
+					});
 
 					return bodyNode;
 				};
@@ -228,6 +234,21 @@ var _Browser_requestAnimationFrame_raw =
 		? requestAnimationFrame
 		: function(callback) { return setTimeout(callback, 1000 / 60); };
 
+var _Browser_drawDepth = 0;
+var _Browser_afterDrawQueue = [];
+
+function _Browser_afterDraw(callback)
+{
+	if (_Browser_drawDepth === 0)
+	{
+		callback;
+	}
+	else
+	{
+		_Browser_afterDrawQueue.push(callback);
+	}
+}
+
 function _Browser_makeAnimator(draw)
 {
 	var model;
@@ -258,12 +279,22 @@ function _Browser_makeAnimator(draw)
 		pendingFrame = false;
 		pendingSync = false;
 		drawing = true;
+		_Browser_drawDepth++;
 		draw(model);
+		_Browser_drawDepth--;
 		drawing = false;
 
 		if (pendingSync)
 		{
 			drawHelp();
+		}
+
+		// This is used when stopping an app, which can happen mid-draw
+		// if `detachView` or `stop` is called from `connectedCallback`.
+		// The view must be cleaned up _after_ the draw is done.
+		while (_Browser_drawDepth === 0 && _Browser_afterDrawQueue.length > 0)
+		{
+			_Browser_afterDrawQueue.shift()();
 		}
 	}
 
