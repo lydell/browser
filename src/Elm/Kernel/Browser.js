@@ -237,7 +237,7 @@ function _Browser_makeAnimator(draw)
 	// its `connectedCallback`, which happens synchronously. That causes
 	// `update` to run while we’re in the middle of drawing, which then
 	// causes another call to the returned function below. We can’t start
-	// another draw while before the first one is finished.
+	// another draw before the first one is finished.
 	var drawing = false;
 
 	// Whether we have already requested an animation frame for drawing.
