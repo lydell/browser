@@ -106,8 +106,11 @@ var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 
 				stepper.__$shutdown = function()
 				{
-					// Remove corner.
-					cornerNode.parentNode.removeChild(cornerNode);
+					// Remove corner. (Support it already being removed by an extension or script.)
+					if (cornerNode.parentNode)
+					{
+						cornerNode.parentNode.removeChild(cornerNode);
+					}
 
 					// Remove blockers.
 					_Debugger_updateBlocker(currBlocker, __Overlay_BlockNone);
