@@ -38,7 +38,14 @@ function _Debugger_unsafeCoerce(value)
 var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 {
 	var wrappedImpl = {
-		__$init: A3(__Main_wrapInit, __Json_wrap(debugMetadata), _Debugger_popout(), impl.__$init),
+		// Note: We can’t get rid of the function expression here, and use partial application
+		// via `A3`, because `_Debugger_popout()` returns an object that is going to be mutated later.
+		// Each `init` call needs its own instance of that object, otherwise app instances will
+		// share one single object and affect each other.
+		__$init: function(flags)
+		{
+			return A4(__Main_wrapInit, __Json_wrap(debugMetadata), _Debugger_popout(), impl.__$init, flags);
+		},
 		__$view: impl.__$view,
 		__$update: __Main_wrapUpdate(impl.__$update),
 		__$subscriptions: __Main_wrapSubs(impl.__$subscriptions)
@@ -170,7 +177,14 @@ var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 {
 	var wrappedImpl = {
-		__$init: A3(__Main_wrapInit, __Json_wrap(debugMetadata), _Debugger_popout(), impl.__$init),
+		// Note: We can’t get rid of the function expression here, and use partial application
+		// via `A3`, because `_Debugger_popout()` returns an object that is going to be mutated later.
+		// Each `init` call needs its own instance of that object, otherwise app instances will
+		// share one single object and affect each other.
+		__$init: function(flags)
+		{
+			return A4(__Main_wrapInit, __Json_wrap(debugMetadata), _Debugger_popout(), impl.__$init, flags);
+		},
 		__$view: impl.__$view,
 		__$update: __Main_wrapUpdate(impl.__$update),
 		__$subscriptions: __Main_wrapSubs(impl.__$subscriptions)
