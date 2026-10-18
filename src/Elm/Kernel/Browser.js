@@ -114,6 +114,7 @@ var _Browser_document = __Debugger_document || F3(function(impl, flagDecoder, de
 			impl.__$subscriptions,
 			function(sendToApp, initialModel, platformInitializeWillDoInitialDraw) {
 				var divertHrefToApp = impl.__$setup && impl.__$setup(sendToApp)
+				var shutdown = impl.__$shutdown;
 				var title = __VirtualDom_doc.title;
 				var bodyNode = __VirtualDom_doc.body;
 				__VirtualDom_divertHrefToApp = divertHrefToApp;
@@ -140,9 +141,13 @@ var _Browser_document = __Debugger_document || F3(function(impl, flagDecoder, de
 						_VirtualDom_removeAllEventListeners(bodyNode);
 					}
 
-					if (impl.__$shutdown)
+					// `__$setup` is called just once, not for every hot reload.
+					// `shutdown` is supposed to clean up that original `__$setup`
+					// call, which is why we keep a local reference to `shutdown`
+					// here. `impl.__$shutdown` gets updated via hot reload.
+					if (shutdown)
 					{
-						impl.__$shutdown();
+						shutdown();
 					}
 
 					return bodyNode;
