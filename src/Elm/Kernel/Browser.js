@@ -167,7 +167,7 @@ var _Browser_document = __Debugger_document || F3(function(impl, flagDecoder, de
 			// Only used by newer versions of __Platform_initialize.
 			impl
 		);
-	}
+	};
 
 	/**__DEBUG/
 	init.hotReloadData = {
