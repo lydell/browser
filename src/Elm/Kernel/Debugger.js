@@ -130,7 +130,6 @@ var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 						{
 							var debuggerWindow = popout.__doc.defaultView;
 							popout.__doc = undefined;
-							popout.__sendToApp(__Main_NoOp);
 							debuggerWindow.close();
 						}
 
@@ -270,7 +269,6 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 						{
 							var debuggerWindow = popout.__doc.defaultView;
 							popout.__doc = undefined;
-							popout.__sendToApp(__Main_NoOp);
 							debuggerWindow.close();
 						}
 
