@@ -57,7 +57,7 @@ var _Browser_element = __Debugger_element || F3(function(impl, flagDecoder, debu
 
 				stepper.__$shutdown = function()
 				{
-					// Older versions of elm/virtual-dom does not provide this function.
+					// Older versions of elm/virtual-dom do not provide this function.
 					if (typeof _VirtualDom_removeAllEventListeners === 'function')
 					{
 						_VirtualDom_removeAllEventListeners(domNode);
@@ -135,7 +135,7 @@ var _Browser_document = __Debugger_document || F3(function(impl, flagDecoder, de
 
 				stepper.__$shutdown = function()
 				{
-					// Older versions of elm/virtual-dom does not provide this function.
+					// Older versions of elm/virtual-dom do not provide this function.
 					if (typeof _VirtualDom_removeAllEventListeners === 'function')
 					{
 						_VirtualDom_removeAllEventListeners(bodyNode);

@@ -130,7 +130,7 @@ var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 					// which prevents garbage collection.
 					popout.__sendToApp = Function.prototype;
 
-					// Older versions of elm/virtual-dom does not provide this function.
+					// Older versions of elm/virtual-dom do not provide this function.
 					if (typeof _VirtualDom_removeAllEventListeners === 'function')
 					{
 						_VirtualDom_removeAllEventListeners(domNode);
@@ -237,7 +237,7 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 				stepper.__$shutdown = function()
 				{
 					// Remove corner.
-					// Older versions of elm/virtual-dom does not provide this function.
+					// Older versions of elm/virtual-dom do not provide this function.
 					if (typeof _VirtualDom_removeLastElmChild === 'function')
 					{
 						_VirtualDom_removeLastElmChild(bodyNode);
@@ -261,7 +261,7 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 					// which prevents garbage collection.
 					popout.__sendToApp = Function.prototype;
 
-					// Older versions of elm/virtual-dom does not provide this function.
+					// Older versions of elm/virtual-dom do not provide this function.
 					if (typeof _VirtualDom_removeAllEventListeners === 'function')
 					{
 						_VirtualDom_removeAllEventListeners(bodyNode);
