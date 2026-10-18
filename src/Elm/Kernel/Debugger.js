@@ -188,7 +188,10 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 		},
 		__$view: impl.__$view,
 		__$update: __Main_wrapUpdate(impl.__$update),
-		__$subscriptions: __Main_wrapSubs(impl.__$subscriptions)
+		__$subscriptions: __Main_wrapSubs(impl.__$subscriptions),
+		// Only used by `Browser.application` (`undefined` otherwise).
+		__$onUrlChange: impl.__$onUrlChange,
+		__$onUrlRequest: impl.__$onUrlRequest
 	};
 
 	var init = function(args)
@@ -203,7 +206,7 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 			wrappedImpl.__$subscriptions,
 			function(sendToApp, initialModel, platformInitializeWillDoInitialDraw)
 			{
-				var divertHrefToApp = impl.__$setup && impl.__$setup(function(x) { return sendToApp(__Main_UserMsg(x)); });
+				var divertHrefToApp = impl.__$setup && impl.__$setup(function(x) { return sendToApp(__Main_UserMsg(x)); }, wrappedImpl);
 				var title = __VirtualDom_doc.title;
 				var bodyNode = __VirtualDom_doc.body;
 				__VirtualDom_divertHrefToApp = divertHrefToApp;

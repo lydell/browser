@@ -115,7 +115,7 @@ var _Browser_document = __Debugger_document || F3(function(impl, flagDecoder, de
 			impl.__$update,
 			impl.__$subscriptions,
 			function(sendToApp, initialModel, platformInitializeWillDoInitialDraw) {
-				var divertHrefToApp = impl.__$setup && impl.__$setup(sendToApp)
+				var divertHrefToApp = impl.__$setup && impl.__$setup(sendToApp, impl);
 				var shutdown = impl.__$shutdown;
 				var title = __VirtualDom_doc.title;
 				var bodyNode = __VirtualDom_doc.body;
@@ -330,11 +330,16 @@ function _Browser_makeAnimator(draw)
 
 function _Browser_application(impl)
 {
-	var key = function() { key.__sendToApp(impl.__$onUrlChange(_Browser_getUrl())); };
+	// The object that hot reloading updates. We read `onUrlChange` and `onUrlRequest` from it
+	// (rather than from `impl`) so that they get updated too. Note: In `--debug` mode, this
+	// is _not_ the same as the argument to `_Browser_document` below, since the debugger wraps it.
+	var platformImpl;
+	var key = function() { key.__sendToApp(platformImpl.__$onUrlChange(_Browser_getUrl())); };
 
 	return _Browser_document({
-		__$setup: function(sendToApp)
+		__$setup: function(sendToApp, platformImpl_)
 		{
+			platformImpl = platformImpl_;
 			key.__sendToApp = sendToApp;
 			_Browser_window.addEventListener('popstate', key);
 			_Browser_window.navigator.userAgent.indexOf('Trident') < 0 || _Browser_window.addEventListener('hashchange', key);
@@ -347,7 +352,7 @@ function _Browser_application(impl)
 					var href = domNode.href;
 					var curr = _Browser_getUrl();
 					var next = __Url_fromString(href).a;
-					sendToApp(impl.__$onUrlRequest(
+					sendToApp(platformImpl.__$onUrlRequest(
 						(next
 							&& curr.__$protocol === next.__$protocol
 							&& curr.__$host === next.__$host
@@ -370,18 +375,11 @@ function _Browser_application(impl)
 		{
 			return A3(impl.__$init, flags, _Browser_getUrl(), key);
 		},
-		// Unnecessary-looking wrapper functions are needed during development
-		// for hot reloading. In production, we optimize slightly by omitting them.
-		/**__PROD/
 		__$view: impl.__$view,
 		__$update: impl.__$update,
-		__$subscriptions: impl.__$subscriptions
-		//*/
-		/**__DEBUG/
-		__$view: function(model) { return impl.__$view(model); },
-		__$update: F2(function(msg, model) { return A2(impl.__$update, msg, model); }),
-		__$subscriptions: function(model) { return impl.__$subscriptions(model); }
-		//*/
+		__$subscriptions: impl.__$subscriptions,
+		__$onUrlChange: impl.__$onUrlChange,
+		__$onUrlRequest: impl.__$onUrlRequest
 	});
 }
 
