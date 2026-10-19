@@ -239,7 +239,7 @@ function _Browser_afterDraw(callback)
 {
 	if (_Browser_drawDepth === 0)
 	{
-		callback;
+		callback();
 	}
 	else
 	{
