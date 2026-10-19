@@ -7,7 +7,7 @@ import Elm.Kernel.Debug exposing (crash)
 import Elm.Kernel.Debugger exposing (element, document)
 import Elm.Kernel.Json exposing (runHelp)
 import Elm.Kernel.List exposing (Nil)
-import Elm.Kernel.Platform exposing (initialize)
+import Elm.Kernel.Platform exposing (effectManagers, initialize)
 import Elm.Kernel.Scheduler exposing (binding, fail, rawSpawn, succeed, spawn)
 import Elm.Kernel.Utils exposing (Tuple0, Tuple2)
 import Elm.Kernel.VirtualDom exposing (appendChild, applyPatches, diff, doc, node, passiveSupported, render, divertHrefToApp)
@@ -26,33 +26,73 @@ import Url exposing (fromString)
 
 var __Debugger_element;
 
-var _Browser_element = __Debugger_element || F4(function(impl, flagDecoder, debugMetadata, args)
+var _Browser_element = __Debugger_element || F3(function(impl, flagDecoder, debugMetadata)
 {
-	return __Platform_initialize(
-		flagDecoder,
-		args,
-		impl.__$init,
-		impl.__$update,
-		impl.__$subscriptions,
-		function(sendToApp, initialModel) {
-			var view = impl.__$view;
-			/**__PROD/
-			var domNode = args['node'];
-			//*/
-			/**__DEBUG/
-			var domNode = args && args['node'] ? args['node'] : __Debug_crash(0);
-			//*/
-			var currNode = _VirtualDom_virtualize(domNode);
+	var init = function(args)
+	{
+		return __Platform_initialize(
+			flagDecoder,
+			args,
+			// These three arguments are used by old versions of __Platform_initialize.
+			// Newer versions ignore them.
+			impl.__$init,
+			impl.__$update,
+			impl.__$subscriptions,
+			function(sendToApp, initialModel, platformInitializeWillDoInitialDraw) {
+				/**__PROD/
+				var domNode = args['node'];
+				//*/
+				/**__DEBUG/
+				var domNode = args && args['node'] ? args['node'] : __Debug_crash(0);
+				//*/
+				var currNode = _VirtualDom_virtualize(domNode);
 
-			return _Browser_makeAnimator(initialModel, function(model)
-			{
-				var nextNode = view(model);
-				var patches = __VirtualDom_diff(currNode, nextNode);
-				domNode = __VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);
-				currNode = nextNode;
-			});
-		}
-	);
+				var stepper = _Browser_makeAnimator(function(model)
+				{
+					var nextNode = impl.__$view(model);
+					var patches = __VirtualDom_diff(currNode, nextNode);
+					domNode = __VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);
+					currNode = nextNode;
+				});
+
+				stepper.__$shutdown = function()
+				{
+					_Browser_afterDraw(function()
+					{
+						// Older versions of elm/virtual-dom do not provide this function.
+						if (typeof _VirtualDom_removeAllEventListeners === 'function')
+						{
+							_VirtualDom_removeAllEventListeners(domNode);
+						}
+					});
+
+					return domNode;
+				};
+
+				// The initial draw used to be a side effect of `stepperBuilder`.
+				// Newer versions of `__Platform_initialize` do that instead.
+				// Older versions don’t send the `platformInitializeWillDoInitialDraw`
+				// parameter, which means that we need to do it here for compatibility.
+				if (!platformInitializeWillDoInitialDraw)
+				{
+					stepper(initialModel, true);
+				}
+
+				return stepper;
+			},
+			// Only used by newer versions of __Platform_initialize.
+			impl
+		);
+	};
+
+	/**__DEBUG/
+	init.hotReloadData = {
+		__$impl: impl,
+		__$platform_effectManagers: __Platform_effectManagers
+	};
+	//*/
+
+	return init;
 });
 
 
@@ -62,35 +102,86 @@ var _Browser_element = __Debugger_element || F4(function(impl, flagDecoder, debu
 
 var __Debugger_document;
 
-var _Browser_document = __Debugger_document || F4(function(impl, flagDecoder, debugMetadata, args)
+var _Browser_document = __Debugger_document || F3(function(impl, flagDecoder, debugMetadata)
 {
-	return __Platform_initialize(
-		flagDecoder,
-		args,
-		impl.__$init,
-		impl.__$update,
-		impl.__$subscriptions,
-		function(sendToApp, initialModel) {
-			var divertHrefToApp = impl.__$setup && impl.__$setup(sendToApp)
-			var view = impl.__$view;
-			var title = __VirtualDom_doc.title;
-			var bodyNode = __VirtualDom_doc.body;
-			__VirtualDom_divertHrefToApp = divertHrefToApp;
-			var currNode = _VirtualDom_virtualize(bodyNode);
-			__VirtualDom_divertHrefToApp = 0;
-			return _Browser_makeAnimator(initialModel, function(model)
-			{
+	var init = function(args)
+	{
+		return __Platform_initialize(
+			flagDecoder,
+			args,
+			// These three arguments are used by old versions of __Platform_initialize.
+			// Newer versions ignore them.
+			impl.__$init,
+			impl.__$update,
+			impl.__$subscriptions,
+			function(sendToApp, initialModel, platformInitializeWillDoInitialDraw) {
+				var divertHrefToApp = impl.__$setup && impl.__$setup(sendToApp, impl);
+				var shutdown = impl.__$shutdown;
+				var title = __VirtualDom_doc.title;
+				var bodyNode = __VirtualDom_doc.body;
 				__VirtualDom_divertHrefToApp = divertHrefToApp;
-				var doc = view(model);
-				var nextNode = __VirtualDom_node('body')(__List_Nil)(doc.__$body);
-				var patches = __VirtualDom_diff(currNode, nextNode);
-				bodyNode = __VirtualDom_applyPatches(bodyNode, currNode, patches, sendToApp);
-				currNode = nextNode;
+				var currNode = _VirtualDom_virtualize(bodyNode);
 				__VirtualDom_divertHrefToApp = 0;
-				(title !== doc.__$title) && (__VirtualDom_doc.title = title = doc.__$title);
-			});
-		}
-	);
+
+				var stepper = _Browser_makeAnimator(function(model)
+				{
+					__VirtualDom_divertHrefToApp = divertHrefToApp;
+					var doc = impl.__$view(model);
+					var nextNode = __VirtualDom_node('body')(__List_Nil)(doc.__$body);
+					var patches = __VirtualDom_diff(currNode, nextNode);
+					bodyNode = __VirtualDom_applyPatches(bodyNode, currNode, patches, sendToApp);
+					currNode = nextNode;
+					__VirtualDom_divertHrefToApp = 0;
+					(title !== doc.__$title) && (__VirtualDom_doc.title = title = doc.__$title);
+				});
+
+				stepper.__$shutdown = function()
+				{
+					_Browser_afterDraw(function()
+					{
+						// Older versions of elm/virtual-dom do not provide this function.
+						if (typeof _VirtualDom_removeAllEventListeners === 'function')
+						{
+							_VirtualDom_removeAllEventListeners(bodyNode);
+						}
+
+						// `__$setup` is called just once, not for every hot reload.
+						// `shutdown` is supposed to clean up that original `__$setup`
+						// call, which is why we keep a local reference to `shutdown`
+						// here. `impl.__$shutdown` gets updated via hot reload.
+						if (shutdown)
+						{
+							shutdown();
+						}
+					});
+
+					return bodyNode;
+				};
+
+				// The initial draw used to be a side effect of `stepperBuilder`.
+				// Newer versions of `__Platform_initialize` do that instead.
+				// Older versions don’t send the `platformInitializeWillDoInitialDraw`
+				// parameter, which means that we need to do it here for compatibility.
+				if (!platformInitializeWillDoInitialDraw)
+				{
+					stepper(initialModel, true);
+				}
+
+				return stepper;
+			},
+			// Only used by newer versions of __Platform_initialize.
+			impl
+		);
+	};
+
+	/**__DEBUG/
+	init.hotReloadData = {
+		__$impl: impl,
+		__$platform_effectManagers: __Platform_effectManagers
+	};
+	//*/
+
+	return init;
 });
 
 
@@ -141,14 +232,31 @@ var _Browser_requestAnimationFrame_raw =
 		? requestAnimationFrame
 		: function(callback) { return setTimeout(callback, 1000 / 60); };
 
-function _Browser_makeAnimator(model, draw)
+var _Browser_drawDepth = 0;
+var _Browser_afterDrawQueue = [];
+
+function _Browser_afterDraw(callback)
 {
+	if (_Browser_drawDepth === 0)
+	{
+		callback();
+	}
+	else
+	{
+		_Browser_afterDrawQueue.push(callback);
+	}
+}
+
+function _Browser_makeAnimator(draw)
+{
+	var model;
+
 	// Whether `draw` is currently running. `draw` can cause side effects:
 	// If the user renders a custom element, they can dispatch an event in
 	// its `connectedCallback`, which happens synchronously. That causes
 	// `update` to run while we’re in the middle of drawing, which then
 	// causes another call to the returned function below. We can’t start
-	// another draw while before the first one is finished.
+	// another draw before the first one is finished.
 	var drawing = false;
 
 	// Whether we have already requested an animation frame for drawing.
@@ -169,12 +277,22 @@ function _Browser_makeAnimator(model, draw)
 		pendingFrame = false;
 		pendingSync = false;
 		drawing = true;
+		_Browser_drawDepth++;
 		draw(model);
+		_Browser_drawDepth--;
 		drawing = false;
 
 		if (pendingSync)
 		{
 			drawHelp();
+		}
+
+		// This is used when stopping an app, which can happen mid-draw
+		// if `detachView` or `stop` is called from `connectedCallback`.
+		// The view must be cleaned up _after_ the draw is done.
+		while (_Browser_drawDepth === 0 && _Browser_afterDrawQueue.length > 0)
+		{
+			_Browser_afterDrawQueue.shift()();
 		}
 	}
 
@@ -185,8 +303,6 @@ function _Browser_makeAnimator(model, draw)
 			drawHelp();
 		}
 	}
-
-	drawHelp();
 
 	return function(nextModel, isSync)
 	{
@@ -214,13 +330,16 @@ function _Browser_makeAnimator(model, draw)
 
 function _Browser_application(impl)
 {
-	var onUrlChange = impl.__$onUrlChange;
-	var onUrlRequest = impl.__$onUrlRequest;
-	var key = function() { key.__sendToApp(onUrlChange(_Browser_getUrl())); };
+	// The object that hot reloading updates. We read `onUrlChange` and `onUrlRequest` from it
+	// (rather than from `impl`) so that they get updated too. Note: In `--debug` mode, this
+	// is _not_ the same as the argument to `_Browser_document` below, since the debugger wraps it.
+	var platformImpl;
+	var key = function() { key.__sendToApp(platformImpl.__$onUrlChange(_Browser_getUrl())); };
 
 	return _Browser_document({
-		__$setup: function(sendToApp)
+		__$setup: function(sendToApp, platformImpl_)
 		{
+			platformImpl = platformImpl_;
 			key.__sendToApp = sendToApp;
 			_Browser_window.addEventListener('popstate', key);
 			_Browser_window.navigator.userAgent.indexOf('Trident') < 0 || _Browser_window.addEventListener('hashchange', key);
@@ -233,7 +352,7 @@ function _Browser_application(impl)
 					var href = domNode.href;
 					var curr = _Browser_getUrl();
 					var next = __Url_fromString(href).a;
-					sendToApp(onUrlRequest(
+					sendToApp(platformImpl.__$onUrlRequest(
 						(next
 							&& curr.__$protocol === next.__$protocol
 							&& curr.__$host === next.__$host
@@ -245,13 +364,22 @@ function _Browser_application(impl)
 				}
 			});
 		},
+		__$shutdown: function()
+		{
+			_Browser_window.removeEventListener('popstate', key);
+			_Browser_window.removeEventListener('hashchange', key);
+			// Allow the app to be garbage collected.
+			key.__sendToApp = function() {};
+		},
 		__$init: function(flags)
 		{
 			return A3(impl.__$init, flags, _Browser_getUrl(), key);
 		},
 		__$view: impl.__$view,
 		__$update: impl.__$update,
-		__$subscriptions: impl.__$subscriptions
+		__$subscriptions: impl.__$subscriptions,
+		__$onUrlChange: impl.__$onUrlChange,
+		__$onUrlRequest: impl.__$onUrlRequest
 	});
 }
 
