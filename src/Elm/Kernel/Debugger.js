@@ -258,9 +258,9 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 					{
 						// Remove corner.
 						// Older versions of elm/virtual-dom do not provide this function.
-						if (typeof _VirtualDom_removeLastElmChild === 'function')
+						if (typeof _VirtualDom_removeElmChild === 'function')
 						{
-							_VirtualDom_removeLastElmChild(bodyNode);
+							_VirtualDom_removeElmChild(bodyNode, currNode.__kids.length - 1);
 						}
 
 						// Remove blockers.
