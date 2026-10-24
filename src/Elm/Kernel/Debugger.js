@@ -3,12 +3,12 @@
 import Debugger.Expando as Expando exposing (S, Primitive, Sequence, Dictionary, Record, Constructor, ListSeq, SetSeq, ArraySeq)
 import Debugger.Main as Main exposing (getUserModel, wrapInit, wrapUpdate, wrapSubs, cornerView, popoutView, NoOp, UserMsg, Up, Down, toBlockerType, initialWindowWidth, initialWindowHeight)
 import Debugger.Overlay as Overlay exposing (BlockNone, BlockMost)
-import Elm.Kernel.Browser exposing (makeAnimator)
+import Elm.Kernel.Browser exposing (afterDraw, makeAnimator)
 import Elm.Kernel.Debug exposing (crash)
 import Elm.Kernel.Json exposing (wrap)
 import Elm.Kernel.List exposing (Cons, Nil)
 import Elm.Kernel.Platform exposing (effectManagers, initialize)
-import Elm.Kernel.Scheduler exposing (binding, enqueue, succeed)
+import Elm.Kernel.Scheduler exposing (binding, succeed)
 import Elm.Kernel.Utils exposing (Tuple0, Tuple2, ap)
 import Elm.Kernel.VirtualDom exposing (node, applyPatches, diff, doc, makeStepper, map, render, virtualize, divertHrefToApp)
 import Json.Decode as Json exposing (map)
@@ -38,7 +38,14 @@ function _Debugger_unsafeCoerce(value)
 var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 {
 	var wrappedImpl = {
-		__$init: A3(__Main_wrapInit, __Json_wrap(debugMetadata), _Debugger_popout(), impl.__$init),
+		// Note: We can’t get rid of the function expression here, and use partial application
+		// via `A3`, because `_Debugger_popout()` returns an object that is going to be mutated later.
+		// Each `init` call needs its own instance of that object, otherwise app instances will
+		// share one single object and affect each other.
+		__$init: function(flags)
+		{
+			return A4(__Main_wrapInit, __Json_wrap(debugMetadata), _Debugger_popout(), impl.__$init, flags);
+		},
 		__$view: impl.__$view,
 		__$update: __Main_wrapUpdate(impl.__$update),
 		__$subscriptions: __Main_wrapSubs(impl.__$subscriptions)
@@ -104,36 +111,41 @@ var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 					__VirtualDom_doc = document; // SWITCH BACK TO NORMAL DOC
 				});
 
-				stepper.__$shutdown = function()
+				stepper.__$shutdown = function(callback)
 				{
-					// Remove corner.
-					cornerNode.parentNode.removeChild(cornerNode);
-
-					// Remove blockers.
-					_Debugger_updateBlocker(currBlocker, __Overlay_BlockNone);
-
-					// Close popout if open.
-					var popout = initialModel.__$popout;
-					if (popout.__doc)
+					_Browser_afterDraw(function()
 					{
-						var debuggerWindow = popout.__doc.defaultView;
-						popout.__doc = undefined;
-						popout.__sendToApp(__Main_NoOp);
-						debuggerWindow.close();
-					}
+						// Remove corner. (Support it already being removed by an extension or script.)
+						if (cornerNode.parentNode)
+						{
+							cornerNode.parentNode.removeChild(cornerNode);
+						}
 
-					// Allow the app to be garbage collected. `Function.prototype` is a no-op function.
-					// Note that we cannot use `function () {}` here, because it has `sendToApp` in scope,
-					// which prevents garbage collection.
-					popout.__sendToApp = Function.prototype;
+						// Remove blockers.
+						_Debugger_updateBlocker(currBlocker, __Overlay_BlockNone);
 
-					// Older versions of elm/virtual-dom does not provide this function.
-					if (typeof _VirtualDom_removeAllEventListeners === 'function')
-					{
-						_VirtualDom_removeAllEventListeners(domNode);
-					}
+						// Close popout if open.
+						var popout = initialModel.__$popout;
+						if (popout.__doc)
+						{
+							var debuggerWindow = popout.__doc.defaultView;
+							popout.__doc = undefined;
+							debuggerWindow.close();
+						}
 
-					return domNode;
+						// Allow the app to be garbage collected. `Function.prototype` is a no-op function.
+						// Note that we cannot use `function () {}` here, because it has `sendToApp` in scope,
+						// which prevents garbage collection.
+						popout.__sendToApp = Function.prototype;
+
+						// Older versions of elm/virtual-dom do not provide this function.
+						if (typeof _VirtualDom_removeAllEventListeners === 'function')
+						{
+							_VirtualDom_removeAllEventListeners(domNode);
+						}
+
+						callback(domNode);
+					});
 				};
 
 				// The initial draw used to be a side effect of `stepperBuilder`.
@@ -155,8 +167,7 @@ var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 	/**__DEBUG/
 	init.hotReloadData = {
 		__$impl: wrappedImpl,
-		__$platform_effectManagers: __Platform_effectManagers,
-		__$scheduler_enqueue: __Scheduler_enqueue
+		__$platform_effectManagers: __Platform_effectManagers
 	};
 	//*/
 
@@ -167,10 +178,20 @@ var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 {
 	var wrappedImpl = {
-		__$init: A3(__Main_wrapInit, __Json_wrap(debugMetadata), _Debugger_popout(), impl.__$init),
+		// Note: We can’t get rid of the function expression here, and use partial application
+		// via `A3`, because `_Debugger_popout()` returns an object that is going to be mutated later.
+		// Each `init` call needs its own instance of that object, otherwise app instances will
+		// share one single object and affect each other.
+		__$init: function(flags)
+		{
+			return A4(__Main_wrapInit, __Json_wrap(debugMetadata), _Debugger_popout(), impl.__$init, flags);
+		},
 		__$view: impl.__$view,
 		__$update: __Main_wrapUpdate(impl.__$update),
-		__$subscriptions: __Main_wrapSubs(impl.__$subscriptions)
+		__$subscriptions: __Main_wrapSubs(impl.__$subscriptions),
+		// Only used by `Browser.application` (`undefined` otherwise).
+		__$onUrlChange: impl.__$onUrlChange,
+		__$onUrlRequest: impl.__$onUrlRequest
 	};
 
 	var init = function(args)
@@ -185,7 +206,7 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 			wrappedImpl.__$subscriptions,
 			function(sendToApp, initialModel, platformInitializeWillDoInitialDraw)
 			{
-				var divertHrefToApp = impl.__$setup && impl.__$setup(function(x) { return sendToApp(__Main_UserMsg(x)); });
+				var divertHrefToApp = impl.__$setup && impl.__$setup(function(x) { return sendToApp(__Main_UserMsg(x)); }, wrappedImpl);
 				var title = __VirtualDom_doc.title;
 				var bodyNode = __VirtualDom_doc.body;
 				__VirtualDom_divertHrefToApp = divertHrefToApp;
@@ -231,45 +252,47 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 					__VirtualDom_doc = document; // SWITCH BACK TO NORMAL DOC
 				});
 
-				stepper.__$shutdown = function()
+				stepper.__$shutdown = function(callback)
 				{
-					// Remove corner.
-					// Older versions of elm/virtual-dom does not provide this function.
-					if (typeof _VirtualDom_removeLastElmChild === 'function')
+					_Browser_afterDraw(function()
 					{
-						_VirtualDom_removeLastElmChild(bodyNode);
-					}
+						// Remove corner.
+						// Older versions of elm/virtual-dom do not provide this function.
+						if (typeof _VirtualDom_removeLastElmChild === 'function')
+						{
+							_VirtualDom_removeLastElmChild(bodyNode, currNode);
+						}
 
-					// Remove blockers.
-					_Debugger_updateBlocker(currBlocker, __Overlay_BlockNone);
+						// Remove blockers.
+						_Debugger_updateBlocker(currBlocker, __Overlay_BlockNone);
 
-					// Close popout if open.
-					var popout = initialModel.__$popout;
-					if (popout.__doc)
-					{
-						var debuggerWindow = popout.__doc.defaultView;
-						popout.__doc = undefined;
-						popout.__sendToApp(__Main_NoOp);
-						debuggerWindow.close();
-					}
+						// Close popout if open.
+						var popout = initialModel.__$popout;
+						if (popout.__doc)
+						{
+							var debuggerWindow = popout.__doc.defaultView;
+							popout.__doc = undefined;
+							debuggerWindow.close();
+						}
 
-					// Allow the app to be garbage collected. `Function.prototype` is a no-op function.
-					// Note that we cannot use `function () {}` here, because it has `sendToApp` in scope,
-					// which prevents garbage collection.
-					popout.__sendToApp = Function.prototype;
+						// Allow the app to be garbage collected. `Function.prototype` is a no-op function.
+						// Note that we cannot use `function () {}` here, because it has `sendToApp` in scope,
+						// which prevents garbage collection.
+						popout.__sendToApp = Function.prototype;
 
-					// Older versions of elm/virtual-dom does not provide this function.
-					if (typeof _VirtualDom_removeAllEventListeners === 'function')
-					{
-						_VirtualDom_removeAllEventListeners(bodyNode);
-					}
+						// Older versions of elm/virtual-dom do not provide this function.
+						if (typeof _VirtualDom_removeAllEventListeners === 'function')
+						{
+							_VirtualDom_removeAllEventListeners(bodyNode);
+						}
 
-					if (impl.__$shutdown)
-					{
-						impl.__$shutdown();
-					}
+						if (impl.__$shutdown)
+						{
+							impl.__$shutdown();
+						}
 
-					return bodyNode;
+						callback(bodyNode);
+					});
 				};
 
 				// The initial draw used to be a side effect of `stepperBuilder`.
@@ -291,8 +314,7 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 	/**__DEBUG/
 	init.hotReloadData = {
 		__$impl: wrappedImpl,
-		__$platform_effectManagers: __Platform_effectManagers,
-		__$scheduler_enqueue: __Scheduler_enqueue
+		__$platform_effectManagers: __Platform_effectManagers
 	};
 	//*/
 
