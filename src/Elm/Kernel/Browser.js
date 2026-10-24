@@ -55,7 +55,7 @@ var _Browser_element = __Debugger_element || F3(function(impl, flagDecoder, debu
 					currNode = nextNode;
 				});
 
-				stepper.__$shutdown = function()
+				stepper.__$shutdown = function(callback)
 				{
 					_Browser_afterDraw(function()
 					{
@@ -64,9 +64,9 @@ var _Browser_element = __Debugger_element || F3(function(impl, flagDecoder, debu
 						{
 							_VirtualDom_removeAllEventListeners(domNode);
 						}
-					});
 
-					return domNode;
+						callback(domNode);
+					});
 				};
 
 				// The initial draw used to be a side effect of `stepperBuilder`.
@@ -135,7 +135,7 @@ var _Browser_document = __Debugger_document || F3(function(impl, flagDecoder, de
 					(title !== doc.__$title) && (__VirtualDom_doc.title = title = doc.__$title);
 				});
 
-				stepper.__$shutdown = function()
+				stepper.__$shutdown = function(callback)
 				{
 					_Browser_afterDraw(function()
 					{
@@ -153,9 +153,9 @@ var _Browser_document = __Debugger_document || F3(function(impl, flagDecoder, de
 						{
 							shutdown();
 						}
-					});
 
-					return bodyNode;
+						callback(bodyNode);
+					});
 				};
 
 				// The initial draw used to be a side effect of `stepperBuilder`.

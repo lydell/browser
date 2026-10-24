@@ -111,7 +111,7 @@ var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 					__VirtualDom_doc = document; // SWITCH BACK TO NORMAL DOC
 				});
 
-				stepper.__$shutdown = function()
+				stepper.__$shutdown = function(callback)
 				{
 					_Browser_afterDraw(function()
 					{
@@ -143,9 +143,9 @@ var _Debugger_element = F3(function(impl, flagDecoder, debugMetadata)
 						{
 							_VirtualDom_removeAllEventListeners(domNode);
 						}
-					});
 
-					return domNode;
+						callback(domNode);
+					});
 				};
 
 				// The initial draw used to be a side effect of `stepperBuilder`.
@@ -252,15 +252,15 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 					__VirtualDom_doc = document; // SWITCH BACK TO NORMAL DOC
 				});
 
-				stepper.__$shutdown = function()
+				stepper.__$shutdown = function(callback)
 				{
 					_Browser_afterDraw(function()
 					{
 						// Remove corner.
 						// Older versions of elm/virtual-dom do not provide this function.
-						if (typeof _VirtualDom_removeElmChild === 'function')
+						if (typeof _VirtualDom_removeLastElmChild === 'function')
 						{
-							_VirtualDom_removeElmChild(bodyNode, currNode.__kids.length - 1);
+							_VirtualDom_removeLastElmChild(bodyNode, currNode);
 						}
 
 						// Remove blockers.
@@ -290,9 +290,9 @@ var _Debugger_document = F3(function(impl, flagDecoder, debugMetadata)
 						{
 							impl.__$shutdown();
 						}
-					});
 
-					return bodyNode;
+						callback(bodyNode);
+					});
 				};
 
 				// The initial draw used to be a side effect of `stepperBuilder`.
