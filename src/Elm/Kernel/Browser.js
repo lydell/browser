@@ -335,20 +335,21 @@ function _Browser_application(impl)
 	// that function to send an URL changed message to the app.
 	// In Lamdera, `Browser.Navigation.Key` is a “useless” opaque value
 	// that you just use as a “password” to `Browser.Navigation.pushUrl`
-	// and friends. The actual function is stored in a semi-global variable
-	// instead – `_Browser_key`. This means that a second application would
-	// overwrite the first, but it doesn’t matter since both apps would
-	// fight over `document.body` anyway. Instead, having `_Browser_key`
-	// allows Wire-ing the model from an old app to a new without having to
-	// do any complicated Wire stuff just for `Browser.Navigation.Key`, and
-	// trying to update that `key` function to refer to stuff in the new app.
+	// and friends, so that it can go through Wire like the rest of the model.
+	// Those functions dispatch a `_Browser_urlChangeEvent` on `window`
+	// instead, which the `key` function listens to, just like `popstate`.
+	// This works no matter where the model’s key came from (a Wire decoded one,
+	// for example) and no matter which code calls `pushUrl` (hot reloaded code
+	// from a new scope, for example, while `key` is from the original scope).
+	// There can only be one `Browser.application` on a page (there is only
+	// one `document.body` and one history), so it doesn’t matter that every
+	// application listens to the event.
 	var modelKey = { $: 0 };
 	// The object that hot reloading updates. We read `onUrlChange` and `onUrlRequest` from it
 	// (rather than from `impl`) so that they get updated too. Note: In `--debug` mode, this
 	// is _not_ the same as the argument to `_Browser_document` below, since the debugger wraps it.
 	var platformImpl;
 	var key = function() { key.__sendToApp(platformImpl.__$onUrlChange(_Browser_getUrl())); };
-	_Browser_key = key;
 
 	return _Browser_document({
 		__$setup: function(sendToApp, platformImpl_)
@@ -356,6 +357,7 @@ function _Browser_application(impl)
 			platformImpl = platformImpl_;
 			key.__sendToApp = sendToApp;
 			_Browser_window.addEventListener('popstate', key);
+			_Browser_window.addEventListener(_Browser_urlChangeEvent, key);
 			_Browser_window.navigator.userAgent.indexOf('Trident') < 0 || _Browser_window.addEventListener('hashchange', key);
 
 			return F2(function(domNode, event)
@@ -382,9 +384,9 @@ function _Browser_application(impl)
 		{
 			_Browser_window.removeEventListener('popstate', key);
 			_Browser_window.removeEventListener('hashchange', key);
+			_Browser_window.removeEventListener(_Browser_urlChangeEvent, key);
 			// Allow the app to be garbage collected.
 			key.__sendToApp = function() {};
-			_Browser_key = null;
 		},
 		__$init: function(flags)
 		{
@@ -403,13 +405,18 @@ function _Browser_getUrl()
 	return __Url_fromString(__VirtualDom_doc.location.href).a || __Debug_crash(1);
 }
 
-var _Browser_key = null;
+var _Browser_urlChangeEvent = 'elm-browser-url-change';
+
+function _Browser_dispatchUrlChange()
+{
+	_Browser_window.dispatchEvent(new Event(_Browser_urlChangeEvent));
+}
 
 var _Browser_go = F2(function(_key, n)
 {
 	return A2(__Task_perform, __Basics_never, __Scheduler_binding(function() {
 		n && history.go(n);
-		_Browser_key();
+		_Browser_dispatchUrlChange();
 	}));
 });
 
@@ -417,7 +424,7 @@ var _Browser_pushUrl = F2(function(_key, url)
 {
 	return A2(__Task_perform, __Basics_never, __Scheduler_binding(function() {
 		history.pushState({}, '', url);
-		_Browser_key();
+		_Browser_dispatchUrlChange();
 	}));
 });
 
@@ -425,7 +432,7 @@ var _Browser_replaceUrl = F2(function(_key, url)
 {
 	return A2(__Task_perform, __Basics_never, __Scheduler_binding(function() {
 		history.replaceState({}, '', url);
-		_Browser_key();
+		_Browser_dispatchUrlChange();
 	}));
 });
 
